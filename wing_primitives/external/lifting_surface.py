@@ -3,6 +3,7 @@ from math import tan, radians, degrees
 import kbeutils.avl as avl
 from parapy.core import *
 from parapy.geom import *
+import math
 
 from wing_primitives.airfoil import Airfoil
 from wing_primitives.structural_elements.spar import SparSegment
@@ -187,7 +188,7 @@ class LiftingSurface(LoftedSurface):
         x_mac = self.x_lemac + self.mean_aerodynamic_chord / 4
         y_mac = y_r + (y_t - y_r) * ((1. + 2. * self.taper_ratio) /
                                      (3. + 3. * self.taper_ratio))
-        return translate(self.position, 'x', x_mac, 'y', y_mac)
+        return Point(x_mac, y_mac, z_r)
 
     @Attribute(settable=False)
     def plane(self):
@@ -216,6 +217,18 @@ class LiftingSurface(LoftedSurface):
     def reference_area(self):
         return self.planform.area
 
+    @Attribute
+    def sweep_c_over_4(self):
+        """ Return the quarter-chord sweep of this wing segment.
+
+        :rtype: float
+        """
+        return math.degrees(
+            math.atan(math.tan(math.radians(self.sweep_le)) +
+                      self.root_airfoil.chord / (2. * self.segment_span) *
+                      (self.taper_ratio - 1.))
+        )
+
     # Spars definition
     @Part
     def spars(self):
@@ -240,6 +253,8 @@ class LiftingSurface(LoftedSurface):
                                self.root_airfoil.chord_line.length *
                                self.spar_chordwise_positions_root[child.index])
         )
+
+
 
     @Attribute
     def closed_solid(self):

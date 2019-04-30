@@ -111,6 +111,10 @@ class NoseCone(FusedShell):
         return FittedCurve([profile.center for profile in profiles])
 
     @Attribute
+    def profiles(self):
+        return self.circles_nose + self.circles_cockpit
+
+    @Attribute
     def shape_in(self):
         return self.surface_cockpit
 

@@ -136,6 +136,11 @@ class Fuselage(FusedShell):
                 .surface_nose.cog.z + self.cabin.cog.z) / 4.
 
     @Attribute
+    def solid(self):
+        # TODO: hangt af van of de tail goed aan kan sluiten aan de fuselage.
+        return CloseSurface(self)
+
+    @Attribute
     def centre_of_gravity_total(self):
         return Point(self.centre_gravity_x, self.centre_gravity_y,
                      self.centre_gravity_z)

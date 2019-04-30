@@ -344,6 +344,10 @@ class Wing(SewnShell):
         return sum(segment.planform.area for segment in self.segments)
 
     @Attribute(settable=False)
+    def taper_ratio(self):
+        return self.sections[-1].chord / self.sections[0].chord
+
+    @Attribute(settable=False)
     def mean_aerodynamic_chord(self):
         """ Returns the mean aerodynamic chord (length) of this overall wing.
 
@@ -351,6 +355,15 @@ class Wing(SewnShell):
         """
         return sum(segment.mean_aerodynamic_chord * segment.reference_area
                    for segment in self.segments) / self.reference_area
+
+    @Attribute(settable=False)
+    def sweep_c_over_4(self):
+        """ Return the weighted quarter-chord sweep of this wing.
+
+        :rtype: float
+        """
+        return sum(segment.sweep_c_over_4 * segment.segment_span
+                   for segment in self.segments) / self.semi_span
 
     @Attribute(settable=False)
     def x_lemac(self):
@@ -371,8 +384,8 @@ class Wing(SewnShell):
         """
         y_mac = sum(segment.mac_position.y * segment.reference_area
                     for segment in self.segments) / self.reference_area
-        x_mac = self.x_lemac + self.mean_aerodynamic_chord / 4
-        return translate(self.position, 'x', x_mac, 'y', y_mac)
+        x_mac = self.x_lemac + self.mean_aerodynamic_chord / 4.
+        return Point(x_mac, y_mac, self.position.z)
 
     @Attribute
     def closed_solid(self):
@@ -433,26 +446,7 @@ class Wing(SewnShell):
         sections = sorted(self.sections + self.movable_sections,
                           key=lambda s: s.position.y)
         avl_sections = [section.avl_section for section in sections]
-        # surfaces = [avl.Surface(name=self.name,
-        #                         surfaces=[sec1, sec2],
-        #                         mach=0.8,
-        #                         reference_area=self.reference_area,
-        #                         reference_chord=self.mean_aerodynamic_chord,
-        #                         reference_span=self.semi_span * 2,
-        #                         reference_point=self.mac_position
-        #                         )
-        #             for sec1, sec2 in zip(sections[:-1], sections[1:])]
-        #
-        # avl_sections = [self.segments[0].root_airfoil.avl_section] + \
-        #                [segment.tip_airfoil.avl_section
-        #                 for segment in self.segments] #+ \
-        #                # [section.avl_section
-        #                #  for section in self.movable_sections]
 
-        # sections = sorted(avl_sections)
-        # sections=avl_sections
-        # sections = [self.segments[0].root_airfoil.avl_section,
-        #             self.segments[0].tip_airfoil.avl_section]
         return avl.Surface(name=self.name,
                            sections=avl_sections,
                            n_chordwise=self.avl_n_chord,
@@ -467,9 +461,9 @@ class Wing(SewnShell):
                                  mach=0.8,
                                  # velocity=200.,
                                  # density=1.225,
-                                 reference_area=self.reference_area,
+                                 reference_area=self.reference_area * 2.,
                                  reference_chord=self.mean_aerodynamic_chord,
-                                 reference_span=self.semi_span * 2,
+                                 reference_span=self.semi_span,
                                  reference_point=self.mac_position)
 
     # Q: cannot run an AVL analysis for this geometry, because of the faulty

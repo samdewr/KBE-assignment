@@ -1,16 +1,16 @@
 from parapy.core import *
 from parapy.geom import *
 from fuselage_primitives.fuselage import Fuselage
+from scissor_plot import ScissorPlot
 from wing_primitives.external.wing import Wing
+import math
 
 
 class Aircraft(GeomBase):
     """ This is the class representing the overall aircraft.
     """
-    # Fuselage Inputs ---------------------------------------------------------
-    # Wing Inputs
-    sweep_angle = Input()
-    span = Input()
+    # Stability inputs
+    stability_margin = Input(validator=val.is_positive)
 
     # Fuselage Inputs
     fuselage_tail_angle = Input()
@@ -40,7 +40,7 @@ class Aircraft(GeomBase):
         validator=lambda lst: all(0 < x < 1 or x is None for x in lst)
     )
 
-    mw_semi_span = Input(validator=val.is_positive)
+    mw_span = Input(validator=val.is_positive)
     mw_wing_cant = Input(validator=val.is_number)
 
     # Spar inputs
@@ -92,6 +92,10 @@ class Aircraft(GeomBase):
     mw_engine_diameters_part2 = Input([0.5, 0.5])
     mw_engine_length_cones1 = Input([2., 2.])
     mw_engine_length_cones2 = Input([1., 1.])
+
+    @Input
+    def mw_semi_span(self):
+        return self.mw_span / 2.
 
     # Horizontal tail Inputs --------------------------------------------------
     horizontal_tail_long_pos = Input(validator=val.Between(0, 1))
@@ -505,6 +509,22 @@ class Aircraft(GeomBase):
             ]
         )
 
+    @Attribute
+    def wing_area(self):
+        return sum([self.main_wing_starboard.reference_area,
+                    self.main_wing_port.reference_area])
+
+    @Attribute
+    def aspect_ratio(self):
+        return self.mw_span ** 2 / self.wing_area
+
+    @Attribute
+    def net_wing_area(self):
+        net_wing = Subtracted(self.main_wing_starboard.planform,
+                              self.fuselage.solid)
+        # TODO: hangt af van goed aansluiten van tail aan cabin.
+        return self.wing_area - 2.
+
     @Part
     def vertical_tail(self):
         return Wing(
@@ -701,11 +721,103 @@ class Aircraft(GeomBase):
     def symmetry_plane(self):
         return Plane(self.position, self.position.Vy, self.position.Vx)
 
+    @Part
+    def scissor_plot(self):
+        return ScissorPlot(
+            # TODO: Als het mogelijk is, deze CL_0 berekeningen enzo even
+            #  koppelen aan AVL.
+            CL_0=self.main_wing_starboard.sections[0].CL_0,
+            CM_0_airfoil=self.main_wing_starboard.sections[0].CM_0,
+            cl_alpha_horizontal=math.degrees(self.horizontal_tail_starboard
+                                             .sections[0].CL_alpha),
+            mac=self.main_wing_starboard.mean_aerodynamic_chord,
+            span=self.mw_span,
+            aspect_ratio=self.aspect_ratio,
+            stability_margin=self.stability_margin,
+            wing_area=self.wing_area,
+            net_wing_area=self.net_wing_area,
+            l_h=self.l_h,
+            z_h=self.z_h,
+            x_ac=self.x_ac_wing_fus,
+            cl_alpha_a_h=self.cl_alpha_a_h,
+            tail_type=self.tail_type,
+            forward_cg=self.forward_cg,
+            aft_cg=self.aft_cg
+        )
 
-    # @Part
-    # def scissor_plot(self):
-    #     return ScissorPlot(length_fuselage=self.length_fuselage,
-    #                        diameter_fuselage=self.diameter_fuselage)
+    @Attribute
+    def x_ac_wing_fus(self):
+        """ Calculates the position of the aerodynamic centre with respect
+        to the position of the mac. The contributions are the engines,
+        the wing and the fuselage.
+
+        :rtype: float
+        """
+        wing = self.main_wing_starboard
+        width_nacelle = self.mw_engine_diameters_inlet
+        x_ac_engines = sum(-4.0 * width_nacelle[idx] ** 2
+                           * self.distance_nacelle_mac[idx] /
+                           (self.wing_area * wing.mean_aerodynamic_chord *
+                            self.cl_alpha_a_h)
+                           for idx in range(self.mw_n_engines / 2))
+        x_ac_wing = 0.25
+        # TODO: hangt af van fuselage tail cabin connection via l_nose_LE
+        # Afstand van de nose tot eerste punt waar wing uit fus komt.
+        l_nose_LE = wing.position.x
+        mac = self.main_wing_starboard.mean_aerodynamic_chord
+        x_ac_rest_1 = -1.8 / self.cl_alpha_a_h * self.fuselage_diameter ** 2 \
+                      * l_nose_LE / (self.wing_area * mac)
+        x_ac_rest_2 = 0.273 / (1 + wing.taper_ratio) * (
+                self.wing_area / self.mw_span) * self.fuselage_diameter * (
+                              self.mw_span - self.fuselage_diameter) / \
+                      (mac ** 2 *
+                       (self.mw_span + 2.15 * self.fuselage_diameter)) \
+                      * math.tan(math.radians(wing.sweep_c_over_4))
+        return x_ac_wing + x_ac_rest_1 + x_ac_rest_2 + x_ac_engines
+
+    @Attribute
+    def cl_alpha_a_h(self):
+        """ Calculates the Lift curve coefficient of the fuselage wing body.
+        This is the aircraft with fuselage and wing without horizontal
+        tailplane.
+        :rtype: float
+        """
+        cl_alpha_wing = self.main_wing_starboard.sections[0].CL_alpha
+        # TODO: CL_alpha a_h (main wings + fuselage uit AVL halen.
+        gradient_deg = cl_alpha_wing * (
+                1 + 2.15 * self.fuselage_diameter / self.mw_span) \
+                * self.net_wing_area / self.wing_area + math.pi / 2. * \
+                self.fuselage_diameter ** 2 \
+                / self.wing_area
+        gradient_rad = math.degrees(gradient_deg)
+        return gradient_rad
+
+    @Attribute
+    def distance_nacelle_mac(self):
+        return [self.main_wing_starboard.mac_position.x - engine.position.x
+                for engine in self.main_wing_starboard.engines]
+
+    @Attribute
+    def l_h(self):
+        return self.horizontal_tail_starboard.mac_position.x - (
+            self.main_wing_starboard.x_lemac + self.x_ac_wing_fus *
+            self.main_wing_starboard.mean_aerodynamic_chord
+        )
+
+    @Attribute
+    def z_h(self):
+        return self.horizontal_tail_starboard.position.z - \
+               self.main_wing_starboard.position.z
+
+    @Attribute
+    def forward_cg(self):
+        # TODO Hier nog even de uitgerekende forward and aft c.g's invullen
+        return 0.2
+
+    @Attribute
+    def aft_cg(self):
+        # TODO Hier nog even de uitgerekende forward and aft c.g's invullen
+        return 0.5
 
 
 if __name__ == '__main__':
@@ -726,7 +838,7 @@ if __name__ == '__main__':
         mw_airfoil_names=['NACA2412', 'NACA2412', 'whitcomb', 'whitcomb'],
         mw_chords=[6., 4.5, 1.2, 0.8], mw_twists=[-2., 0., 3., 5.],
         mw_sweeps_le=[15., 35., 45.], mw_dihedral_angles=[2., 4., 8.],
-        mw_spanwise_positions=[0.45, 0.85], mw_semi_span=15., mw_wing_cant=0.,
+        mw_spanwise_positions=[0.45, 0.85], mw_span=30., mw_wing_cant=0.,
         # Spars inputs
         mw_n_spars=3,
         mw_spar_chordwise_positions=[[0.2, 0.15, 0.2],
