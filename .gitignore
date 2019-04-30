@@ -1,0 +1,17 @@
+*.idea\*
+*.md
+*.pyc
+*.xml
+.idea/workspace.xml
+docs/build/
+.idea/workspace.xml
+*.avl
+*.pyc
+*.pyc
+*.pyc
+nose.pyc
+tail.pyc
+*.whl
+*.txt
+fuselage_test.py
+*.txt
