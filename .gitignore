@@ -1,5 +1,4 @@
 *.idea\*
-*.md
 *.pyc
 *.xml
 .idea/workspace.xml
