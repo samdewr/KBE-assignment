@@ -73,9 +73,9 @@ class Fuselage(FusedShell):
     def cabin(self):
         return Cabin(length=self.cabin_length,
                      diameter_fuselage=self.diameter, n_circles=10,
-                     position=translate(rotate90(
-                         self.nose.circles_cockpit[-1].position, 'y'), 'x',
-                         -self.cabin_length))
+                     position=rotate(self.nose.circles_cockpit[-1].position,
+                                        'y', radians(270)))
+
 
     @Attribute
     # Returns the tail segment. This is variable by the angle. The angle
@@ -85,31 +85,12 @@ class Fuselage(FusedShell):
         return TailCone(length=self.tail_length,
                         fuselage_diameter=self.diameter * 1.0,
                         height_ratio=self.tail_height_ratio,
-                        position=rotate(translate(
-                            self.position,
-                            'x',
-                            self.cabin_length + self.nose_length +
-                            self.cockpit_length,
-                            'z',
-                            self.nose.scaling_cockpit[0] * self.diameter / 2.),
-                            'x', radians(90)))
-
-    #                     rotate(
-    #                         Position(max(self.cabin.profiles,
-    #                                      key=lambda p: p.center.x).center),
-    #                         'x', radians(90))
-    #                     )
-    #
-    # translate(
-    #     self.position,
-    #     'x',
-    #     self.cabin_length + self.nose_length +
-    #     self.cockpit_length, 'z',
-    #     self.nose.scaling_cockpit[0] *
-    #     self.diameter / 2.), 'x', radians(90))
+                        position=rotate(self.cabin.profiles[-1].position,
+                                           'y',radians(-90.)))
     @Attribute
     def shape_in(self):
         return self.nose
+
 
     @Attribute
     def tool(self):
@@ -119,31 +100,31 @@ class Fuselage(FusedShell):
         """
         return [self.cabin, self.tail]
 
-    @Attribute
-    def centre_gravity_x(self):
-        return (self.tail.cog.x + self.nose.surface_cockpit.cog.x +
-                self.nose.surface_nose.cog.x + self.cabin.cog.x) / 4.
-
-    @Attribute
-    def centre_gravity_y(self):
-        return (self.tail.cog.y * 0.05 + self.nose.surface_cockpit.cog.y * 0.05 +
-                self.nose
-                .surface_nose.cog.y * 0.05 + self.cabin.cog.y * 0.9)
-
-    @Attribute
-    def centre_gravity_z(self):
-        return (self.tail.cog.z + self.nose.surface_cockpit.cog.z + self.nose
-                .surface_nose.cog.z + self.cabin.cog.z) / 4.
+    # @Attribute
+    # def centre_gravity_x(self):
+    #     return (self.tail.cog.x + self.nose.surface_cockpit.cog.x +
+    #             self.nose.surface_nose.cog.x + self.cabin.cog.x) / 4.
+    #
+    # @Attribute
+    # def centre_gravity_y(self):
+    #     return (self.tail.cog.y * 0.05 + self.nose.surface_cockpit.cog.y * 0.05 +
+    #             self.nose
+    #             .surface_nose.cog.y * 0.05 + self.cabin.cog.y * 0.9)
+    #
+    # @Attribute
+    # def centre_gravity_z(self):
+    #     return (self.tail.cog.z + self.nose.surface_cockpit.cog.z + self.nose
+    #             .surface_nose.cog.z + self.cabin.cog.z) / 4.
 
     @Attribute
     def solid(self):
         # TODO: hangt af van of de tail goed aan kan sluiten aan de fuselage.
         return CloseSurface(self)
 
-    @Attribute
-    def centre_of_gravity_total(self):
-        return Point(self.centre_gravity_x, self.centre_gravity_y,
-                     self.centre_gravity_z)
+    # @Attribute
+    # def centre_of_gravity_total(self):
+    #     return Point(self.centre_gravity_x, self.centre_gravity_y,
+    #                  self.centre_gravity_z)
 
     @Attribute
     def length(self):
