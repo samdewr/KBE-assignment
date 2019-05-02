@@ -412,8 +412,8 @@ class Wing(SewnShell):
         """
         controls = [avl.Control(
             name=self.movables_names[idx],
-            gain=1 if not (self.movables_symmetric[idx] or
-                           self.is_starboard) else -1,
+            gain=-1 if (not self.movables_symmetric[idx] and
+                        self.is_starboard) else 1,
             x_hinge=self.movable_hingeline_starts[idx],
             duplicate_sign=1 if self.movables_symmetric[idx] else -1
         )
@@ -467,7 +467,7 @@ class Wing(SewnShell):
                            n_spanwise=self.avl_n_span,
                            chord_spacing=self.avl_c_spacing,
                            span_spacing=self.avl_s_spacing,
-                           y_duplicate=0.0)
+                           y_duplicate=0.0 if self.wing_cant != 90. else None)
 
     @Attribute
     def avl_configuration(self):
@@ -479,25 +479,36 @@ class Wing(SewnShell):
            that analyses are always run for symmetric wings, because the
            obtained values would not make sense otherwise.
         """
+        is_root = self.parent is None
+        mac = self.mean_aerodynamic_chord if is_root \
+            else self.parent.mean_aerodynamic_chord
+        span = self.semi_span * 2 if is_root else self.parent.mw_span
+        ref_point = Point(self.mac_position.x, 0., self.mac_position.y) if \
+            is_root else Point(self.parent.mac_position)
         return avl.Configuration(name=self.name,
                                  surfaces=[self.avl_surface],
                                  mach=0.8,
                                  # velocity=200.,
                                  # density=1.225,
+                                 # TODO check whether reference area and
+                                 #  chord are still correct for horizontal
+                                 #  and vertical tails.
                                  reference_area=self.reference_area * 2.,
-                                 reference_chord=self.mean_aerodynamic_chord,
-                                 reference_span=self.semi_span * 2,
-                                 reference_point=Point(self.mac_position.x,
-                                                       0.,
-                                                       self.mac_position.z))
+                                 reference_chord=mac,
+                                 reference_span=span,
+                                 reference_point=ref_point)
 
     @Attribute
     def cases(self):
         """ The run cases of AVL.
+        .. note::
+           The ailerons are never deflected, because due to the perfect
+           symmetry, the CL does not change as a result
         """
-        return [avl.Case(name='alpha_{0:0.1f}'.format(alpha),
-                         settings={'alpha': avl.Parameter(name='alpha',
-                                                          value=alpha)})
+        return [avl.Case(
+            name='alpha_{0:0.1f}'.format(alpha),
+            settings={'alpha': avl.Parameter(name='alpha',
+                                             value=alpha)})
                 for alpha in np.arange(self.avl_alpha_start,
                                        self.avl_alpha_end,
                                        self.avl_alpha_step)]
@@ -554,24 +565,7 @@ class Wing(SewnShell):
 
         :rtype: float
         """
-        if not self.avl_alpha_start <= alpha <= self.avl_alpha_end:
-            raise Exception(
-                'The requested CL for alpha: {} is out of the range of '
-                'alpha_start: {} and alpha_end: {}. '
-                'Extrapolation is not supported.'
-                .format(alpha, self.avl_alpha_start, self.avl_alpha_end)
-            )
-
-        try:
-            alpha_str = 'alpha_{0:0.1f}'.format(float(alpha))
-            return self.avl_analysis.results[alpha_str]['Totals']['CLtot']
-        except KeyError:
-            alphas = np.arange(self.avl_alpha_start, self.avl_alpha_end,
-                               self.avl_alpha_step)
-            CLs = [self.avl_analysis.results
-                   ['alpha_{0:0.1f}'.format(float(alpha))]['Totals']['CLtot']
-                   for alpha in alphas]
-            return np.interp(alpha, alphas, CLs)
+        return self.get_quantity('CLtot', alpha)
 
     def get_Cm(self, alpha):
         """ Return the pitching moment coefficient for a given alpha (angle of
@@ -584,27 +578,26 @@ class Wing(SewnShell):
 
         :rtype: float
         """
-        if not self.avl_alpha_start <= alpha <= self.avl_alpha_end:
-            raise Exception(
-                'The requested Cm for alpha: {} is out of the range of '
-                'alpha_start: {} and alpha_end: {}. '
-                'Extrapolation is not supported.'
-                .format(alpha, self.avl_alpha_start, self.avl_alpha_end)
-            )
-
-        try:
-            alpha_str = 'alpha_{0:0.1f}'.format(float(alpha))
-            return self.avl_analysis.results[alpha_str]['Totals']['Cmtot']
-        except KeyError:
-            alphas = np.arange(self.avl_alpha_start, self.avl_alpha_end,
-                               self.avl_alpha_step)
-            Cms = [self.avl_analysis.results
-                   ['alpha_{0:0.1f}'.format(float(alpha))]['Totals']['Cmtot']
-                   for alpha in alphas]
-            return np.interp(alpha, alphas, Cms)
+        return self.get_quantity('Cmtot', alpha)
 
     def get_CD(self, alpha):
+        """ Return the pitching moment coefficient for a given alpha (angle of
+        attack).
+
+        :param alpha: angle of attack in degrees
+        :type alpha: float | int
+
+        :raises Exception: if alpha is out of the range of analysed alphas.
+
+        :rtype: float
+        """
+        return self.get_quantity('CDtot', alpha)
+
+    def get_quantity(self, quantity, alpha):
         """ Return the drag coefficient for a given alpha (angle of attack).
+
+        :param quantity: the quantity that is requested
+        :type quantity: str
 
         :param alpha: angle of attack in degrees
         :type alpha: float | int
@@ -615,35 +608,54 @@ class Wing(SewnShell):
         """
         if not self.avl_alpha_start <= alpha <= self.avl_alpha_end:
             raise Exception(
-                'The requested CD for alpha: {} is out of the range of '
+                'The requested {} for alpha: {} is out of the range of '
                 'alpha_start: {} and alpha_end: {}. '
                 'Extrapolation is not supported.'
-                .format(alpha, self.avl_alpha_start, self.avl_alpha_end)
+                .format(quantity, alpha,
+                        self.avl_alpha_start, self.avl_alpha_end)
             )
         alpha = 'alpha_{0:0.1f}'.format(float(alpha))
-        try:
-            return self.avl_analysis.results[alpha]['Totals']['CDtot']
-        except KeyError:
-            alphas = np.arange(self.avl_alpha_start, self.avl_alpha_end,
-                               self.avl_alpha_step)
-            CDs = [self.avl_analysis.results
-                   ['alpha_{0:0.1f}'.format(float(alpha))]['Totals']['CDtot']
-                   for alpha in alphas]
-            return np.interp(alpha, alphas, CDs)
 
-    # return [avl.Case(
-    #     name='CL_{}'.format(CL),
-    #     settings={'alpha': (avl.Parameter(name='alpha',
-    #                                       value=CL,
-    #                                       constraint='CL')),
-    #               'flap': -10})
-    # for CL in np.arange(0.2, 0.3, 0.1)]
-    # CASE_PARAMETERS = {'alpha': 'alpha', 'beta': 'beta',
-    #                    'roll_rate': 'pb/2V', 'pitch_rate': 'qc/2V',
-    #                    'yaw_rate': 'rb/2V'}
-    #
-    # VALID_CONSTRAINTS = ['alpha', 'beta', 'pb/2V', 'qc/2V',
-    #                      'rb/2V', 'CL', 'CY', 'Cl', 'Cm', 'Cn']
+        alphas = np.arange(self.avl_alpha_start, self.avl_alpha_end,
+                           self.avl_alpha_step)
+        values = [self.avl_analysis.results
+                  ['alpha_{0:0.1f}'.format(float(alpha))]['Totals'][quantity]
+                  for alpha in alphas]
+        return np.interp(alpha, alphas, values)
+
+    def get_custom_avl_results(self, alpha, show_trefftz_plot=False,
+                               show_geometry=False, **kwargs):
+        """
+
+        :param alpha: the angle of attack of the wing.
+        :type alpha: float
+        :param show_trefftz_plot: show the trefftz plot?
+        :type show_trefftz_plot: bool
+        :param show_geometry: show the wing geometry?
+        :type show_geometry: bool
+        :param kwargs: a (set of) key-value pair(s) defining a (set of)
+            movable deflection(s).
+
+        """
+        CASE_PARAMETERS = {'alpha': 'alpha', 'beta': 'beta',
+                           'roll_rate': 'pb/2V', 'pitch_rate': 'qc/2V',
+                           'yaw_rate': 'rb/2V'}
+
+        VALID_CONSTRAINTS = ['alpha', 'beta', 'pb/2V', 'qc/2V',
+                             'rb/2V', 'CL', 'CY', 'Cl', 'Cm', 'Cn']
+
+        settings = {'alpha': avl.Parameter(name='alpha', value=alpha)}
+        settings.update(kwargs)
+
+        cases = [avl.Case(name='custom', settings=settings)]
+
+        analysis = avl.Interface(cases=cases,
+                                 configuration=self.avl_configuration)
+        if show_trefftz_plot:
+            analysis.show_trefftz_plot()
+        if show_geometry:
+            analysis.show_geometry()
+        return analysis.results['custom']
 
     # Attributes helping in instantiating LiftingSurface child objects
     @Attribute(settable=False)

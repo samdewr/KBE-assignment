@@ -1,4 +1,4 @@
-
+import kbeutils.avl as avl
 
 from parapy.core import *
 from parapy.geom import *
@@ -45,15 +45,10 @@ class Fuselage(SewnShell):
         :rtype: float
         """
 
-        return self.tail_length * tan(radians(self.tail_angle)) / \
+        return self.tail_length * math.tan(math.radians(self.tail_angle)) / \
                self.diameter - 0.5
 
-    @Attribute
-    def fuselage_length_total(self):
-        return self.cabin_length+self.nose_length+self.cockpit_length+\
-               self.tail_length
-
-    @Attribute
+    @Part(in_tree=False)
     def nose(self):
         """ Returns the nose class
 
@@ -63,7 +58,7 @@ class Fuselage(SewnShell):
                         final_diameter=self.diameter,
                         cockpit_length=self.cockpit_length)
 
-    @Attribute
+    @Part(in_tree=False)
     def cabin(self):
         """ Returns the Cabin class
 
@@ -73,10 +68,9 @@ class Fuselage(SewnShell):
                      diameter_fuselage=self.diameter, n_circles=10,
                      position=rotate(
                          self.nose.circles_cockpit[-1].position,
-                         'y', radians(270)))
+                         'y', math.radians(270)))
 
-
-    @Attribute
+    @Part(in_tree=False)
     def tail(self):
         """ Returns the Tail class
 
@@ -87,11 +81,10 @@ class Fuselage(SewnShell):
                         height_ratio=self.tail_height_ratio,
                         position=rotate(
                             self.cabin.profiles[-1].position,
-                            'y',radians(-90.)))
+                            'y', math.radians(-90.)))
     @Attribute
     def shape_in(self):
         return self.nose
-
 
     @Attribute
     def tool(self):
@@ -135,15 +128,22 @@ class Fuselage(SewnShell):
         :rtype: parapy.geom.occ.projection.ProjectedCurve
         """
         return ProjectedCurve(self.center_line, self, self.position.Vz)
+    #
+    # @Attribute
+    # def avl_body(self):
+    #     points = [Point()]
+    #     return avl.Body()
 
     @Attribute
-    def lower_line(self):
-        """ Return the :attr:`center_line` projected onto the lower fuselage
-        surface (onto the 'floor').
-
-        :rtype: parapy.geom.occ.projection.ProjectedCurve
-        """
-        return ProjectedCurve(self.center_line, self, self.position.Vz_)
+    def sample_points(self):
+        profiles = [profile for segment in [obj.nose, obj.cabin, obj.tail]
+                    for profile in segment.profiles]
+        plne = Plane(self.position, self.position.Vy, self.position.Vx)
+        points = [[max(profile.intersection_points(plne),
+                       key=lambda pt: pt.z) for profile in profiles],
+                  [min(profile.intersection_points(plne),
+                       key=lambda pt: pt.z) for profile in profiles]]
+        return points
 
     def point_at_fractions(self, f_long, f_trans, f_lat):
         """ Return a point at a certain longitudinal, transverse,

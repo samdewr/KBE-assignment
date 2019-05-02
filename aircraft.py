@@ -3,8 +3,10 @@ from parapy.geom import *
 from fuselage_primitives.fuselage import Fuselage
 from scissor_plot import ScissorPlot
 from wing_primitives.external.wing import Wing
+import kbeutils.avl as avl
 import math
 import numpy as np
+from scipy import interpolate
 
 class Aircraft(GeomBase):
     """ This is the class representing the overall aircraft.
@@ -375,6 +377,17 @@ class Aircraft(GeomBase):
         'vt_engine_spanwise_positions', 'vt_engine_overhangs'
     ]
 
+    # Optional inputs
+    name = Input('aircraft')
+    color = Input('white')
+    transparency = Input(0.5)
+    avl_CL_start = Input(0.1)
+    avl_CL_end = Input(0.8)
+    avl_CL_step = Input(0.1)
+    avl_delta_e_start = Input(-30.)
+    avl_delta_e_end = Input(31.)
+    avl_delta_e_step = Input(30.)
+
     @Part
     def fuselage(self):
         return Fuselage(
@@ -719,8 +732,13 @@ class Aircraft(GeomBase):
             #  koppelen aan AVL.
             CL_0=self.main_wing_starboard.CL_0,
             Cm_0_airfoil=self.main_wing_starboard.Cm_0,
-            cl_alpha_horizontal=math.degrees(self.horizontal_tail_starboard
+            CL_alpha_wing=self.main_wing_starboard.CL_alpha,
+            CL_alpha_horizontal=math.degrees(self.horizontal_tail_starboard
                                              .CL_alpha),
+            sweep_angle_025c=math.radians(self.main_wing_starboard
+                                          .sweep_c_over_4),
+            fuselage_diameter=self.fuselage.diameter,
+            fuselage_length=self.fuselage.length,
             mac=self.main_wing_starboard.mean_aerodynamic_chord,
             span=self.mw_span,
             aspect_ratio=self.aspect_ratio,
@@ -730,7 +748,7 @@ class Aircraft(GeomBase):
             l_h=self.l_h,
             z_h=self.z_h,
             x_ac=self.x_ac_wing_fus,
-            cl_alpha_a_h=self.cl_alpha_a_h,
+            CL_alpha_a_h=self.cl_alpha_a_h,
             tail_type=self.tail_type,
             forward_cg=self.forward_cg,
             aft_cg=self.aft_cg
@@ -750,12 +768,80 @@ class Aircraft(GeomBase):
                     self.main_wing_port.reference_area])
 
     @Attribute
+    def mean_aerodynamic_chord(self):
+        return self.main_wing_starboard.mean_aerodynamic_chord
+
+    @Attribute
+    def mac_position(self):
+        return Point(self.main_wing_starboard.mac_position.x,
+                     0.,
+                     self.main_wing_starboard.mac_position.x)
+
+    @Attribute
     def aspect_ratio(self):
         """ The overall aspect / slenderness ratio of the wing.
 
         :rtype: float
         """
         return self.mw_span ** 2 / self.wing_area
+
+    @Part
+    def avl_analysis(self):
+        """ The AVL analysis wrapper part.
+        """
+        return avl.Interface(cases=self.cases,
+                             configuration=self.avl_configuration)
+
+    @Attribute
+    def avl_configuration(self):
+        """ The avl configuration of this aircraft, such that it can be
+        interpreted by AVL.
+        """
+        return avl.Configuration(
+            name=self.name,
+            surfaces=[self.main_wing_starboard.avl_surface,
+                      self.horizontal_tail_starboard.avl_surface,
+                      self.vertical_tail.avl_surface],
+            mach=0.8,
+            reference_area=self.wing_area,
+            reference_chord=self.main_wing_starboard.mean_aerodynamic_chord,
+            reference_span=self.mw_span,
+            reference_point=Point(self.main_wing_starboard.mac_position.x,
+                                  0.,
+                                  self.main_wing_starboard.mac_position.z)
+            )
+
+    @Attribute
+    def avl_configuration_less_tail(self):
+        """ The avl configuration of this aircraft without tail, such that it
+        can be interpreted by AVL.
+        """
+        # TODO: add fuselage body
+        return avl.Configuration(
+            name=self.name,
+            surfaces=[self.main_wing_starboard.avl_surface],
+            mach=0.8,
+            reference_area=self.wing_area,
+            reference_chord=self.main_wing_starboard.mean_aerodynamic_chord,
+            reference_span=self.mw_span,
+            reference_point=Point(self.main_wing_starboard.mac_position.x,
+                                  0.,
+                                  self.main_wing_starboard.mac_position.z)
+            )
+
+    @Attribute
+    def cases(self):
+        return [avl.Case(name='CL_{:.1f}_delta_e_{:.1f}'.format(CL, delta_e),
+                         settings={'alpha': avl.Parameter(name='alpha',
+                                                          value=CL,
+                                                          constraint='CL'),
+                                   'elevator': delta_e})
+                for CL in np.arange(self.avl_CL_start,
+                                    self.avl_CL_end,
+                                    self.avl_CL_step)
+                for delta_e in np.arange(self.avl_delta_e_start,
+                                         self.avl_delta_e_end,
+                                         self.avl_delta_e_step)]
 
     @Attribute
     def net_wing_area(self):
@@ -853,6 +939,127 @@ class Aircraft(GeomBase):
     def aft_cg(self):
         # TODO Hier nog even de uitgerekende forward and aft c.g's invullen
         return 0.3
+
+    def get_alpha(self, CL, delta_e):
+        """ Return the drag coefficient for a given alpha (angle
+        of attack) and delta_e (elevator deflection).
+
+        :param CL: lift coefficient
+        :type CL: float | int
+
+        :param delta_e: elevator deflection in degrees
+        :type delta_e: float | int
+
+        :raises Exception: if alpha is out of the range of analysed alphas.
+
+        :rtype: float
+        """
+        return self.get_quantity('Alpha', CL, delta_e)
+
+    def get_Cm(self, CL, delta_e):
+        """ Return the pitching moment coefficient for a given alpha (angle
+        of attack) and delta_e (elevator deflection).
+
+        :param CL: lift coefficient
+        :type CL: float | int
+
+        :param delta_e: elevator deflection in degrees
+        :type delta_e: float | int
+
+        :raises Exception: if alpha is out of the range of analysed alphas.
+
+        :rtype: float
+        """
+        return self.get_quantity('Cmtot', CL, delta_e)
+
+    def get_CD(self, CL, delta_e):
+        """ Return the drag coefficient for a given alpha (angle
+        of attack) and delta_e (elevator deflection).
+
+        :param CL: lift coefficient
+        :type CL: float | int
+
+        :param delta_e: elevator deflection in degrees
+        :type delta_e: float | int
+
+        :raises Exception: if alpha is out of the range of analysed alphas.
+
+        :rtype: float
+        """
+        return self.get_quantity('CDtot', CL, delta_e)
+
+    def get_quantity(self, quantity, CL, delta_e):
+        """ Return any AVL 'total' quantity for a given alpha (angle
+        of attack) and delta_e (elevator deflection).
+
+        :param quantity: the quantity that is requested
+        :type quantity: str
+
+        :param CL: lift coefficient
+        :type CL: float | int
+
+        :param delta_e: elevator deflection in degrees
+        :type delta_e: float | int
+
+        :raises Exception: if alpha is out of the range of analysed alphas.
+
+        :rtype: numpy.ndarray[float]
+        """
+        if not self.avl_CL_start <= CL <= self.avl_CL_end:
+            raise Exception(
+                'The requested {} for alpha: {} is out of the range of '
+                'alpha_start: {} and alpha_end: {}. '
+                'Extrapolation is not supported.'
+                .format(quantity, CL, self.avl_CL_start, self.avl_CL_end)
+            )
+        if not self.avl_delta_e_start <= delta_e <= self.avl_delta_e_end:
+            raise Exception(
+                'The requested {} for alpha: {} is out of the range of '
+                'alpha_start: {} and alpha_end: {}. '
+                'Extrapolation is not supported.'
+                .format(quantity, delta_e,
+                        self.avl_delta_e_start, self.avl_delta_e_end)
+            )
+
+        CLs = np.arange(self.avl_CL_start, self.avl_CL_end,
+                        self.avl_CL_step)
+        delta_es = np.arange(self.avl_delta_e_start, self.avl_delta_e_end,
+                             self.avl_delta_e_step)
+        values = [[self.avl_analysis.results['CL_{:.1f}_delta_e_{:.1f}'
+                   .format(float(CL), float(delta_e))]['Totals'][quantity]
+                   for CL in CLs]
+                  for delta_e in delta_es]
+        interp = interpolate.interp2d(CLs, delta_es, values,
+                                      bounds_error=True)
+
+        return interp(CL, delta_e)
+
+    def get_custom_avl_results(self, alpha, show_trefftz_plot=False,
+                               show_geometry=False, **kwargs):
+        """
+
+        :param alpha: the angle of attack of the configuration.
+        :type alpha: float
+        :param show_trefftz_plot: show the trefftz plot?
+        :type show_trefftz_plot: bool
+        :param show_geometry: show the wing geometry?
+        :type show_geometry: bool
+        :param kwargs: a (set of) key-value pair(s) defining a (set of)
+            movable deflection(s).
+
+        """
+        settings = {'alpha': avl.Parameter(name='alpha', value=alpha)}
+        settings.update(kwargs)
+
+        cases = [avl.Case(name='custom', settings=settings)]
+
+        analysis = avl.Interface(cases=cases,
+                                 configuration=self.avl_configuration)
+        if show_trefftz_plot:
+            analysis.show_trefftz_plot()
+        if show_geometry:
+            analysis.show_geometry()
+        return analysis.results['custom']
 
 
 if __name__ == '__main__':

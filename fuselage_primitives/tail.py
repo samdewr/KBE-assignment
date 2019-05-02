@@ -30,7 +30,7 @@ class TailCone(LoftedSurface):
                 """
         return self.length / (len(self.tail_scaling_list) - 1)
 
-    @Part
+    @Part(in_tree=False)
     def tail_circles(self):
         """ Builds a continuous number of circles. These circles become
         smaller and smaller by each circle with the help of the scaling
