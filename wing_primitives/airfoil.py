@@ -79,7 +79,7 @@ class Airfoil(FittedCurve):
     alpha_start = Input(-15.)
     alpha_end = Input(15.)
     alpha_step = Input(1.)
-    controls = Input(None)
+    controls = Input([None])
 
     @Input
     def label(self):
@@ -301,7 +301,7 @@ class Airfoil(FittedCurve):
             chord=self.chord,
             airfoil=airfoil,
             position=self.position,
-            controls=[] if self.controls is None else [self.controls]
+            controls=self.controls
         )
 
     @Attribute
