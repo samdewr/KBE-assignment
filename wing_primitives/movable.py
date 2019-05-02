@@ -23,11 +23,6 @@ class Movable(RotatedShape, SewnShell):
     color = Input('orange')
     transparency = Input(0.5)
     symmetric = Input(True, validator=lambda x: isinstance(x, bool))
-    name = Input('movable')
-
-    @Input
-    def label(self):
-        return self.name
 
     @Attribute
     def orientation(self):
