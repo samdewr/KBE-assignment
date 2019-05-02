@@ -13,9 +13,8 @@ class NoseCone(FusedShell):
 
     # list of scaling factors for the nose diameter
     @Attribute
-    #  list of scaling factors for the nose diameter and how it is being scaled
     def list_scaling(self):
-        """ generates an array with the scaling factors, this will help with
+        """ Generates an array with the scaling factors, this will help with
         the scaling for the nose part of the nosecone.
                         :rtype array
                         """
@@ -38,8 +37,9 @@ class NoseCone(FusedShell):
         :rtype: parapy.geom.occ.curve.Circle
         """
         return Circle(quantify=len(self.list_scaling),
-                      position=rotate90(translate(self.position,'x',
-                                        child.index * self.nose_steps),'y'),
+                      position=rotate90(translate(self.position,
+                                        'x', child.index * self.nose_steps)
+                                        ,'y'),
                       radius=self.list_scaling[child.index]
                              * self.final_diameter / 2.)
 
@@ -71,9 +71,6 @@ class NoseCone(FusedShell):
         return numbers2
 
     @Part(in_tree=False)
-    # This is the cockpit part. The start radius is the end radius of the
-    # nosecone. Furthermore, They are all tranlated upwards in order to
-    # generate the pilots cabin and all their equipment.
     def circles_cockpit(self):
         """ Generates a number of circles to make the shell of the cockpit.
         The circles start at the position where the nose ends. The part is
@@ -83,12 +80,12 @@ class NoseCone(FusedShell):
         """
         return Circle(quantify=len(self.scaling_cockpit),
                       position=rotate90(
-                          translate(self.circles_nose[-1].position, 'z',
-                                    child.index * self.steps_cockpit, 'x',
-                                    -self.final_diameter / 2. *
-                                    (self.scaling_cockpit[child.index] -
-                                     self.list_scaling[-1]))
-                                    , 'z'),
+                          translate(self.circles_nose[-1].position,
+                                    'z',child.index * self.steps_cockpit,
+                                    'x',-self.final_diameter / 2. *
+                                        (self.scaling_cockpit[child.index] -
+                                        self.list_scaling[-1])),
+                                    'z'),
                       radius=self.scaling_cockpit[child.index] *
                                          self.final_diameter / 2.)
 

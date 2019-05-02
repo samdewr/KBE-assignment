@@ -32,61 +32,56 @@ class Fuselage(FusedShell):
 
     @Attribute
     def tail_height_ratio(self):
-        """ <<< Hier typ je je verhaal over wat een attribute doet. In dit
-        geval is dat misschien niet nodig, aangezien "height_ratio"
-        heel erg voor zich spreekt. Bij andere, minder duidelijke attributes
-        zou je het wel kunnen doen. Je krijgt zo'n docstring makkelijk door
-        drie keer op dubbele apostrof (") te drukken tussen "def" en je
-        functie, dan op spatie en dan op enter te drukken. >>>
+        """ The ratio of the height of the fuselage. This attribute shifts
+        the angle of the tail into the height of the end of the tail
+        accordingly.
 
-        :rtype: <<< Hier typ je wat voor een type variabele door je
-        functie/attribute gereturnd wordt. Bijvoorbeeld, als ik een lijst
-        van parapy punten return, zeg ik hier:
-        "list[list[parapy.geom.generic.positioning.Point]"
-        Stel je voor je weet niet wat voor een type een bepaald attribute
-        is, dan kan je natuurlijk gewoon in je python console met
-        type(obj.attribute_dat_je_wil_checken) kijken wat voor een type het is.
-        Als ik een dictionary van strings naar integers return zeg ik hier:
-        "dict[str: int]">>>
+        :rtype: float
         """
-        # This atribute converts the angle into a height ratio which is used
-        # for the height positioning of the tail.
 
-        #  Generates the placement of the aft tail. The angle is used to
-        # convert it to a height ratio.
-        # :rtype: float
-
-        return self.tail_length * tan(radians(
-            self.tail_angle)) / self.diameter - 0.5
+        return self.tail_length * tan(radians(self.tail_angle)) / \
+               self.diameter - 0.5
 
     @Attribute
-    # Returns the Nosecone section of the fuselage and is oriented in the
-    # direction in order to make it coherent with the reference frame
+    def fuselage_length_total(self):
+        return self.cabin_length+self.nose_length+self.cockpit_length+\
+               self.tail_length
+
+    @Attribute
     def nose(self):
+        """ Returns the nose class
+
+        :rtype: parapy.geom.boolean.FusedShell
+        """
         return NoseCone(length=self.nose_length,
                         final_diameter=self.diameter,
                         cockpit_length=self.cockpit_length)
 
     @Attribute
-    # Returns cabin. This just consist of a few circular parts that are
-    # connected by a LoftedSurfae.
     def cabin(self):
+        """ Returns the Cabin class
+
+            :rtype: parapy.geom.occ.Lofting
+        """
         return Cabin(length=self.cabin_length,
                      diameter_fuselage=self.diameter, n_circles=10,
-                     position=rotate(self.nose.circles_cockpit[-1].position,
-                                        'y', radians(270)))
+                     position=rotate(
+                         self.nose.circles_cockpit[-1].position,
+                         'y', radians(270)))
 
 
     @Attribute
-    # Returns the tail segment. This is variable by the angle. The angle
-    # calculates a height ratio, which  is used to position the aft position
-    # of the tail itself.
     def tail(self):
+        """ Returns the Tail class
+
+            :rtype: parapy.geom.occ.Lofting
+        """
         return TailCone(length=self.tail_length,
                         fuselage_diameter=self.diameter * 1.0,
                         height_ratio=self.tail_height_ratio,
-                        position=rotate(self.cabin.profiles[-1].position,
-                                           'y',radians(-90.)))
+                        position=rotate(
+                            self.cabin.profiles[-1].position,
+                            'y',radians(-90.)))
     @Attribute
     def shape_in(self):
         return self.nose
