@@ -619,8 +619,9 @@ class Wing(SewnShell):
         alphas = np.arange(self.avl_alpha_start, self.avl_alpha_end,
                            self.avl_alpha_step)
         values = [self.avl_analysis.results
-                  ['alpha_{0:0.1f}'.format(float(alpha))]['Totals'][quantity]
-                  for alpha in alphas]
+                  ['alpha_{0:0.1f}'.format(float(_alpha))]['Totals'][quantity]
+                  for _alpha in alphas]
+
         return np.interp(alpha, alphas, values)
 
     def get_custom_avl_results(self, alpha, show_trefftz_plot=False,

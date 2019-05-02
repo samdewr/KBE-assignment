@@ -1026,13 +1026,13 @@ class Aircraft(GeomBase):
         delta_es = np.arange(self.avl_delta_e_start, self.avl_delta_e_end,
                              self.avl_delta_e_step)
         values = [[self.avl_analysis.results['CL_{:.1f}_delta_e_{:.1f}'
-                   .format(float(CL), float(delta_e))]['Totals'][quantity]
-                   for CL in CLs]
-                  for delta_e in delta_es]
-        interp = interpolate.interp2d(CLs, delta_es, values,
-                                      bounds_error=True)
+                   .format(float(_CL), float(_delta_e))]['Totals'][quantity]
+                   for _CL in CLs]
+                  for _delta_e in delta_es]
 
-        return interp(CL, delta_e)
+        f = interpolate.interp2d(CLs, delta_es, values, bounds_error=True)
+
+        return f(CL, delta_e)
 
     def get_custom_avl_results(self, alpha, show_trefftz_plot=False,
                                show_geometry=False, **kwargs):
