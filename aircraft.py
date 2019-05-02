@@ -4,7 +4,7 @@ from fuselage_primitives.fuselage import Fuselage
 from scissor_plot import ScissorPlot
 from wing_primitives.external.wing import Wing
 import math
-
+import numpy as np
 
 class Aircraft(GeomBase):
     """ This is the class representing the overall aircraft.
