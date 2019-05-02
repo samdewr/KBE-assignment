@@ -254,7 +254,7 @@ class Wing(SewnShell):
         return Engine(position=self.engine_positions[child.index],
                       quantify=self.n_engines)
 
-    @Part(in_tree=True)
+    @Part(in_tree=False)
     def segments(self):
         """ Return the wing segments that make up the entire wing. This part
         is not shown in the object tree. However, it is used in generating
@@ -510,7 +510,7 @@ class Wing(SewnShell):
         """
         alphas = np.arange(self.avl_alpha_start, self.avl_alpha_end,
                            self.avl_alpha_step)
-        CLs = [obj.get_CL(alpha) for alpha in alphas]
+        CLs = [self.get_CL(alpha) for alpha in alphas]
         return np.polyfit(alphas, CLs, 1)[-1]
 
     @Attribute
@@ -521,7 +521,7 @@ class Wing(SewnShell):
         """
         alphas = np.arange(self.avl_alpha_start, self.avl_alpha_end,
                            self.avl_alpha_step)
-        CDs = [obj.get_CD(alpha) for alpha in alphas]
+        CDs = [self.get_CD(alpha) for alpha in alphas]
         return np.polyfit(alphas, CDs, 1)[-1]
 
     @Attribute
@@ -541,7 +541,7 @@ class Wing(SewnShell):
         """
         alphas = np.arange(self.avl_alpha_start, self.avl_alpha_end,
                            self.avl_alpha_step)
-        CLs = [obj.get_CL(alpha) for alpha in alphas]
+        CLs = [self.get_CL(alpha) for alpha in alphas]
         return np.polyfit(alphas, CLs, 1)[0]
 
     def get_CL(self, alpha):

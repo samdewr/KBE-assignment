@@ -336,7 +336,7 @@ class Airfoil(FittedCurve):
                 for result in results]
 
     @Attribute
-    def CM_0(self):
+    def Cm_0(self):
         """ Returns the airfoil's zero-angle-of-attack pitching moment
         coefficient. If no zero-AoA XFOIL analysis has been run, it takes
         the picthing moment coefficient of the run with the AoA nearest to

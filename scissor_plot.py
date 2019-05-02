@@ -20,7 +20,7 @@ class ScissorPlot(Base):
     # Airfoil Specifics
 
     CL_0 = Input(.5)  # lift at zero angle of attack.
-    CM_0_airfoil = Input(0.)  # zero pitching moment
+    Cm_0_airfoil = Input(0.)  # zero pitching moment
 
     # Wing Specifics
 
@@ -99,7 +99,7 @@ class ScissorPlot(Base):
         calculated. This is used for the controllability curve of the aircraft.
                 :rtype: float
                 """
-        cm_ac_w = self.CM_0_airfoil * (self.aspect_ratio * (cos(radians(
+        cm_ac_w = self.Cm_0_airfoil * (self.aspect_ratio * (cos(radians(
             self.sweep_angle_025c))) ** 2 / (self.aspect_ratio + 2 *
                                              cos(radians(
                                                  self.sweep_angle_025c))))
@@ -223,7 +223,6 @@ class ScissorPlot(Base):
                 return controllability_forward_cg * self.wing_area
             elif stability_diff > control_diff:
                 return stability_aft_cg * self.wing_area
-
 
     @Attribute(in_tree=False)
     def scissor_curve(self):
