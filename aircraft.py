@@ -85,6 +85,7 @@ class Aircraft(GeomBase):
     mw_movable_hingeline_starts = Input(validator=val.all_is_number)
     mw_movable_deflections = Input(validator=val.all_is_number)
     mw_movables_symmetric = Input(validator=val.all_is_number)
+    mw_movables_names = Input(validator=val.all_is_string)
 
     # Engines input
     mw_n_engines = Input(validator=lambda x: isinstance(x, int))
@@ -162,6 +163,7 @@ class Aircraft(GeomBase):
     ht_movable_hingeline_starts = Input(validator=val.all_is_number)
     ht_movable_deflections = Input(validator=val.all_is_number)
     ht_movables_symmetric = Input(validator=val.all_is_number)
+    ht_movables_names = Input(validator=val.all_is_string)
 
     # Engines input
     ht_n_engines = Input(0, validator=lambda x: isinstance(x, int))
@@ -173,14 +175,8 @@ class Aircraft(GeomBase):
     ht_engine_length_cones1 = Input([2., 2.])
     ht_engine_length_cones2 = Input([1., 1.])
 
-<<<<<<< HEAD
-    # Horizontal tail Inputs --------------------------------------------------
-    vertical_tail_long_pos = Input(validator=val.Between(0, 1))
-    vertical_tail_lat_pos = Input(validator=val.Between(0, 1))
-=======
     # Vertical tail Inputs --------------------------------------------------
     vertical_tail_trans_pos = Input(validator=val.Range(0, 1))
->>>>>>> 0bf9fa7f1a81ace82a77b933520260cd19b718cb
 
     vt_n_wing_segments = Input(validator=lambda x: isinstance(x, int))
 
@@ -240,6 +236,7 @@ class Aircraft(GeomBase):
     vt_movable_hingeline_starts = Input(validator=val.all_is_number)
     vt_movable_deflections = Input(validator=val.all_is_number)
     vt_movables_symmetric = Input(validator=val.all_is_number)
+    vt_movables_names = Input(validator=val.all_is_string)
 
     # Engines input
     vt_n_engines = Input(0, validator=lambda x: isinstance(x, int))
@@ -457,6 +454,7 @@ class Aircraft(GeomBase):
                 'mw_movable_hingeline_starts->movable_hingeline_starts',
                 'mw_movable_deflections->movable_deflections',
                 'mw_movables_symmetric->movables_symmetric',
+                'mw_movables_names->movables_names',
                 # Engines inputs
                 'mw_n_engines->n_engines',
                 'mw_engine_spanwise_positions->engine_spanwise_positions',
@@ -520,6 +518,7 @@ class Aircraft(GeomBase):
                 'mw_movable_hingeline_starts->movable_hingeline_starts',
                 'mw_movable_deflections->movable_deflections',
                 'mw_movables_symmetric->movables_symmetric',
+                'mw_movables_names->movables_names',
                 # Engines inputs
                 'mw_n_engines->n_engines',
                 'mw_engine_spanwise_positions->engine_spanwise_positions',
@@ -582,6 +581,7 @@ class Aircraft(GeomBase):
                 'vt_movable_hingeline_starts->movable_hingeline_starts',
                 'vt_movable_deflections->movable_deflections',
                 'vt_movables_symmetric->movables_symmetric',
+                'vt_movables_names->movables_names',
                 # Engines inputs
                 'vt_n_engines->n_engines',
                 'vt_engine_spanwise_positions->engine_spanwise_positions',
@@ -648,6 +648,7 @@ class Aircraft(GeomBase):
                 'ht_movable_hingeline_starts->movable_hingeline_starts',
                 'ht_movable_deflections->movable_deflections',
                 'ht_movables_symmetric->movables_symmetric',
+                'ht_movables_names->movables_names',
                 # Engines inputs
                 'ht_n_engines->n_engines',
                 'ht_engine_spanwise_positions->engine_spanwise_positions',
@@ -715,6 +716,7 @@ class Aircraft(GeomBase):
                 'ht_movable_hingeline_starts->movable_hingeline_starts',
                 'ht_movable_deflections->movable_deflections',
                 'ht_movables_symmetric->movables_symmetric',
+                'ht_movables_names->movables_names',
                 # Engines inputs
                 'ht_n_engines->n_engines',
                 'ht_engine_spanwise_positions->engine_spanwise_positions',
@@ -1120,6 +1122,7 @@ if __name__ == '__main__':
         mw_movable_hingeline_starts=[0.8, 0.85],
         mw_movable_deflections=[5., 10.],
         mw_movables_symmetric=[True, False],
+        mw_movables_names=['flap', 'aileron'],
         # Engines inputs
         mw_n_engines=2,
         mw_engine_spanwise_positions=[0.15, 0.5],
@@ -1171,6 +1174,7 @@ if __name__ == '__main__':
         ht_movable_hingeline_starts=[0.8],
         ht_movable_deflections=[10.],
         ht_movables_symmetric=[True],
+        ht_movables_names=['elevator'],
         # Vertical tail inputs ------------------------------------------------
         # Wing positioning
         vertical_tail_trans_pos=0.5,
@@ -1217,7 +1221,8 @@ if __name__ == '__main__':
         vt_movable_spanwise_ends=[0.8],
         vt_movable_hingeline_starts=[0.8],
         vt_movable_deflections=[10.],
-        vt_movables_symmetric=[True]
+        vt_movables_symmetric=[True],
+        vt_movables_names=['rudder']
     )
 
     display(obj)

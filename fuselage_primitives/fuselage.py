@@ -81,12 +81,7 @@ class Fuselage(SewnShell):
                         height_ratio=self.tail_height_ratio,
                         position=rotate(
                             self.cabin.profiles[-1].position,
-<<<<<<< HEAD
-                            'y',radians(-90.)))
-
-=======
                             'y', math.radians(-90.)))
->>>>>>> 0bf9fa7f1a81ace82a77b933520260cd19b718cb
     @Attribute
     def shape_in(self):
         return self.nose

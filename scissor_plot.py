@@ -121,10 +121,10 @@ class ScissorPlot(Base):
     @Attribute
     def c_l_h(self):
         """ Value dependent on the type of tail. Since a conventional
-        aircraft is assumed it is set
+        aircraft is assumed it is set to -0.8
 
-                :rtype: float
-                """
+        :rtype: float
+        """
         return -0.8
 
     @Attribute
@@ -133,7 +133,7 @@ class ScissorPlot(Base):
         corresponding controllability limits. This is later used for the
         scissor plot.
 
-                        :rtype: list
+        :rtype: list
         """
         list = []
         for i in self.cg_range:
@@ -151,11 +151,11 @@ class ScissorPlot(Base):
     @Attribute
     def stability_values(self):
         """ This attribute goes through the c.g. range and calculates the
-                corresponding Stability limits. This is later used for the
-                scissor plot.
+        corresponding Stability limits. This is later used for the
+        scissor plot.
 
-                                :rtype: list
-                """
+        :rtype: list
+        """
         list = []
         for j in self.cg_range:
 

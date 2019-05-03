@@ -4,7 +4,7 @@ import kbeutils.avl as avl
 import numpy as np
 from parapy.core import *
 from parapy.geom import *
-
+import logging
 from engine import Engine
 from wing_primitives.airfoil import IntersectedAirfoil
 from wing_primitives.external.lifting_surface import LiftingSurface
@@ -101,6 +101,7 @@ class Wing(SewnShell):
     movable_hingeline_starts = Input(validator=val.all_is_number)
     movable_deflections = Input(validator=val.all_is_number)
     movables_symmetric = Input(validator=val.all_is_number)
+    movables_names = Input(validator=val.all_is_string)
 
     # Engines input
     n_engines = Input(validator=lambda x: isinstance(x, int))
@@ -158,10 +159,13 @@ class Wing(SewnShell):
     is_starboard = Input(True)
     location = Input(ORIGIN, validator=lambda pt: isinstance(pt, Point))
     airfoil_number_of_points = Input(100, validator=val.is_positive)
-    avl_n_chord = Input(6)
-    avl_n_span = Input(20)
-    avl_c_spacing = Input(2.)
-    avl_s_spacing = Input(1.0)
+    avl_n_chord = Input(6, validator=lambda x: isinstance(x, int))
+    avl_n_span = Input(40, validator=lambda x: isinstance(x, int))
+    avl_c_spacing = Input(2., validator=val.is_positive)
+    avl_s_spacing = Input(1.0, validator=val.is_positive)
+    avl_alpha_start = Input(0., validator=val.is_number)
+    avl_alpha_end = Input(10., validator=val.is_number)
+    avl_alpha_step = Input(0.5, validator=val.is_number)
     transparency = Input(0.8)
     color = Input('white')
     name = Input('wing')
@@ -241,7 +245,8 @@ class Wing(SewnShell):
                                  'movable_spanwise_ends->spanwise_end',
                                  'movable_hingeline_starts->hingeline_start',
                                  'movable_deflections->deflection',
-                                 'movables_symmetric->symmetric'],
+                                 'movables_symmetric->symmetric',
+                                 'movables_names->name'],
                        quantify=self.n_movables)
 
     @Part
@@ -406,15 +411,9 @@ class Wing(SewnShell):
         :rtype: list[wing_primitives.airfoil.IntersectedAirfoil]
         """
         controls = [avl.Control(
-<<<<<<< HEAD
-            name='{}_movable_{}'.format(self.name, idx),
-            gain=1 if not (self.movables_symmetric[idx] or
-                           self.is_starboard) else -1,
-=======
             name=self.movables_names[idx],
             gain=-1 if (not self.movables_symmetric[idx] and
                         self.is_starboard) else 1,
->>>>>>> 0bf9fa7f1a81ace82a77b933520260cd19b718cb
             x_hinge=self.movable_hingeline_starts[idx],
             duplicate_sign=1 if self.movables_symmetric[idx] else -1
         )
@@ -442,7 +441,16 @@ class Wing(SewnShell):
         """
         return self.closed_solid.shells[0]
 
-    @Attribute(in_tree=True)
+    # AVL analysis attributes and parts
+
+    @Part
+    def avl_analysis(self):
+        """ The AVL analysis wrapper part.
+        """
+        return avl.Interface(cases=self.cases,
+                             configuration=self.avl_configuration)
+
+    @Attribute
     def avl_surface(self):
         """ Return the AVL Surface geometry. This representation is required
         the AVL wrapper.
@@ -458,17 +466,11 @@ class Wing(SewnShell):
                            n_chordwise=self.avl_n_chord,
                            n_spanwise=self.avl_n_span,
                            chord_spacing=self.avl_c_spacing,
-<<<<<<< HEAD
-                           span_spacing=self.avl_s_spacing)
-=======
                            span_spacing=self.avl_s_spacing,
                            y_duplicate=0.0 if self.wing_cant != 90. else None)
->>>>>>> 0bf9fa7f1a81ace82a77b933520260cd19b718cb
 
-    @Attribute(in_tree=True)
+    @Attribute
     def avl_configuration(self):
-<<<<<<< HEAD
-=======
         """ The 'configuration' of this wing, such that it can be
         interpreted by AVL.
 
@@ -483,7 +485,6 @@ class Wing(SewnShell):
         span = self.semi_span * 2 if is_root else self.parent.mw_span
         ref_point = Point(self.mac_position.x, 0., self.mac_position.y) if \
             is_root else self.parent.mac_position
->>>>>>> 0bf9fa7f1a81ace82a77b933520260cd19b718cb
         return avl.Configuration(name=self.name,
                                  surfaces=[self.avl_surface],
                                  mach=0.8,
@@ -493,33 +494,6 @@ class Wing(SewnShell):
                                  #  chord are still correct for horizontal
                                  #  and vertical tails.
                                  reference_area=self.reference_area * 2.,
-<<<<<<< HEAD
-                                 reference_chord=self.mean_aerodynamic_chord,
-                                 reference_span=self.semi_span,
-                                 reference_point=self.mac_position)
-
-    # Q: cannot run an AVL analysis for this geometry, because of the faulty
-    #  section AVL definition. See Airfoil for details.
-
-    @Attribute(in_tree=True)
-    def cases(self):
-        return [avl.Case(
-            name='CL_{}'.format(CL),
-            settings={'alpha': (avl.Parameter(name='alpha',
-                                              value=CL,
-                                              constraint='CL'))})
-        for CL in np.arange(0.2, 1.5, 0.1)]
-    # CASE_PARAMETERS = {'alpha': 'alpha', 'beta': 'beta',
-    #                    'roll_rate': 'pb/2V', 'pitch_rate': 'qc/2V',
-    #                    'yaw_rate': 'rb/2V'}
-    #
-    # VALID_CONSTRAINTS = ['alpha', 'beta', 'pb/2V', 'qc/2V',
-    #                      'rb/2V', 'CL', 'CY', 'Cl', 'Cm', 'Cn']
-    @Part(in_tree=True)
-    def avl_analysis(self):
-        return avl.Interface(cases=self.cases,
-                             configuration=self.avl_configuration)
-=======
                                  reference_chord=mac,
                                  reference_span=span,
                                  reference_point=ref_point)
@@ -682,7 +656,6 @@ class Wing(SewnShell):
         if show_geometry:
             analysis.show_geometry()
         return analysis.results['custom']
->>>>>>> 0bf9fa7f1a81ace82a77b933520260cd19b718cb
 
     # Attributes helping in instantiating LiftingSurface child objects
     @Attribute(settable=False)
@@ -979,15 +952,15 @@ if __name__ == '__main__':
     obj = Wing(
         # Wing segments inputs
         n_wing_segments=3,
-        airfoil_names=['NACA2412', 'NACA2412', 'whitcomb', 'whitcomb'],
-        chords=[6., 4.5, 1.2, 0.8], twists=[-2., 0., 3., 5.],
+        airfoil_names=['NACA2412', 'NACA2412', 'NACA23012', 'NACA23012'],
+        chords=[6., 4.5, 1.2, 0.8], twists=[0., 0., 3., 5.],
         sweeps_le=[15., 35., 45.], dihedral_angles=[2., 4., 8.],
         spanwise_positions=[0.45, 0.85], semi_span=15., wing_cant=0.,
         # Spars inputs
         n_spars=3,
-        spar_chordwise_positions =[[0.2, 0.15, 0.2],
-                                   [0.5, 0.55, 0.5],
-                                   [0.8, 0.85, 0.8, 0.75]],
+        spar_chordwise_positions=[[0.2, 0.15, 0.2],
+                                  [0.5, 0.55, 0.5],
+                                  [0.8, 0.85, 0.8, 0.75]],
         spar_aspect_ratios=[0.2, 0.3, 0.4], spar_profiles=['C_', 'I', 'C'],
         spar_spanwise_positions_end=[0.8, 0.7, 0.9],
         # Wing box ribs inputs
@@ -1017,7 +990,7 @@ if __name__ == '__main__':
         n_movables=2,
         movable_spanwise_starts=[0.1, 0.5], movable_spanwise_ends=[0.4, 0.8],
         movable_hingeline_starts=[0.8, 0.85], movable_deflections=[5., 10.],
-        movables_symmetric=[True, False],
+        movables_symmetric=[True, False], movables_names=['flap', 'aileron'],
         # Engines inputs
         n_engines=2,
         engine_spanwise_positions=[0.15, 0.5], engine_overhangs=[0.4, 0.3])
