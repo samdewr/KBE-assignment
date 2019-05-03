@@ -6,7 +6,6 @@ from math import sqrt
 
 
 class NoseCone(FusedShell):
-    # Q: Why can't we make a SewnShell of this class?
     length = Input(2.)
     cockpit_length = Input(5.)
     final_diameter = Input(5.)
@@ -106,6 +105,15 @@ class NoseCone(FusedShell):
         """
         profiles = self.circles_nose + self.circles_cockpit
         return FittedCurve([profile.center for profile in profiles])
+
+    @Attribute
+    def upper_line(self):
+        """ Return the :attr:`center_line` projected onto the upper half of
+        the surface (onto the 'ceiling').
+
+        :rtype: parapy.geom.occ.projection.ProjectedCurve
+        """
+        return ProjectedCurve(self.center_line, self, self.position.Vz)
 
     @Attribute
     def profiles(self):

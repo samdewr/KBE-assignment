@@ -249,7 +249,7 @@ class Wing(SewnShell):
         return Engine(position=self.engine_positions[child.index],
                       quantify=self.n_engines)
 
-    @Part(in_tree=True)
+    @Part(in_tree=False)
     def segments(self):
         """ Return the wing segments that make up the entire wing. This part
         is not shown in the object tree. However, it is used in generating
@@ -406,9 +406,15 @@ class Wing(SewnShell):
         :rtype: list[wing_primitives.airfoil.IntersectedAirfoil]
         """
         controls = [avl.Control(
+<<<<<<< HEAD
             name='{}_movable_{}'.format(self.name, idx),
             gain=1 if not (self.movables_symmetric[idx] or
                            self.is_starboard) else -1,
+=======
+            name=self.movables_names[idx],
+            gain=-1 if (not self.movables_symmetric[idx] and
+                        self.is_starboard) else 1,
+>>>>>>> 0bf9fa7f1a81ace82a77b933520260cd19b718cb
             x_hinge=self.movable_hingeline_starts[idx],
             duplicate_sign=1 if self.movables_symmetric[idx] else -1
         )
@@ -452,16 +458,42 @@ class Wing(SewnShell):
                            n_chordwise=self.avl_n_chord,
                            n_spanwise=self.avl_n_span,
                            chord_spacing=self.avl_c_spacing,
+<<<<<<< HEAD
                            span_spacing=self.avl_s_spacing)
+=======
+                           span_spacing=self.avl_s_spacing,
+                           y_duplicate=0.0 if self.wing_cant != 90. else None)
+>>>>>>> 0bf9fa7f1a81ace82a77b933520260cd19b718cb
 
     @Attribute(in_tree=True)
     def avl_configuration(self):
+<<<<<<< HEAD
+=======
+        """ The 'configuration' of this wing, such that it can be
+        interpreted by AVL.
+
+        .. note::
+           The analysis run in AVL is *not* for a semi-wing. It is assumed
+           that analyses are always run for symmetric wings, because the
+           obtained values would not make sense otherwise.
+        """
+        is_root = self.parent is None
+        mac = self.mean_aerodynamic_chord if is_root \
+            else self.parent.mean_aerodynamic_chord
+        span = self.semi_span * 2 if is_root else self.parent.mw_span
+        ref_point = Point(self.mac_position.x, 0., self.mac_position.y) if \
+            is_root else self.parent.mac_position
+>>>>>>> 0bf9fa7f1a81ace82a77b933520260cd19b718cb
         return avl.Configuration(name=self.name,
                                  surfaces=[self.avl_surface],
                                  mach=0.8,
                                  # velocity=200.,
                                  # density=1.225,
+                                 # TODO check whether reference area and
+                                 #  chord are still correct for horizontal
+                                 #  and vertical tails.
                                  reference_area=self.reference_area * 2.,
+<<<<<<< HEAD
                                  reference_chord=self.mean_aerodynamic_chord,
                                  reference_span=self.semi_span,
                                  reference_point=self.mac_position)
@@ -487,6 +519,170 @@ class Wing(SewnShell):
     def avl_analysis(self):
         return avl.Interface(cases=self.cases,
                              configuration=self.avl_configuration)
+=======
+                                 reference_chord=mac,
+                                 reference_span=span,
+                                 reference_point=ref_point)
+
+    @Attribute
+    def cases(self):
+        """ The run cases of AVL.
+        .. note::
+           The ailerons are never deflected, because due to the perfect
+           symmetry, the CL does not change as a result
+        """
+        return [avl.Case(
+            name='alpha_{0:0.1f}'.format(alpha),
+            settings={'alpha': avl.Parameter(name='alpha',
+                                             value=alpha)})
+                for alpha in np.arange(self.avl_alpha_start,
+                                       self.avl_alpha_end,
+                                       self.avl_alpha_step)]
+
+    @Attribute
+    def CL_0(self):
+        """ Return the zero-angle-of-attack lift coefficient of this wing.
+
+        :rtype: float
+        """
+        alphas = np.arange(self.avl_alpha_start, self.avl_alpha_end,
+                           self.avl_alpha_step)
+        CLs = [self.get_CL(alpha) for alpha in alphas]
+        return np.polyfit(alphas, CLs, 1)[-1]
+
+    @Attribute
+    def CD_0(self):
+        """ Return the zero-angle-of-attack lift coefficient of this wing.
+
+        :rtype: float
+        """
+        alphas = np.arange(self.avl_alpha_start, self.avl_alpha_end,
+                           self.avl_alpha_step)
+        CDs = [self.get_CD(alpha) for alpha in alphas]
+        return np.polyfit(alphas, CDs, 1)[-1]
+
+    @Attribute
+    def Cm_0(self):
+        """ Return the zero-angle-of-attack pitching moment coefficient of
+        this wing around its aerodynamic centre.
+
+        :rtype: float
+        """
+        return self.get_Cm(alpha=0.)
+
+    @Attribute
+    def CL_alpha(self):
+        """ Return the lift curve slope of this wing in deg\ :sup:`-1`\ .
+
+        :rtype: float
+        """
+        alphas = np.arange(self.avl_alpha_start, self.avl_alpha_end,
+                           self.avl_alpha_step)
+        CLs = [self.get_CL(alpha) for alpha in alphas]
+        return np.polyfit(alphas, CLs, 1)[0]
+
+    def get_CL(self, alpha):
+        """ Return the lift coefficient for a given alpha (angle of attack).
+
+        :param alpha: angle of attack in degrees
+        :type alpha: float | int
+
+        :raises Exception: if alpha is out of the range of analysed alphas.
+
+        :rtype: float
+        """
+        return self.get_quantity('CLtot', alpha)
+
+    def get_Cm(self, alpha):
+        """ Return the pitching moment coefficient for a given alpha (angle of
+        attack).
+
+        :param alpha: angle of attack in degrees
+        :type alpha: float | int
+
+        :raises Exception: if alpha is out of the range of analysed alphas.
+
+        :rtype: float
+        """
+        return self.get_quantity('Cmtot', alpha)
+
+    def get_CD(self, alpha):
+        """ Return the pitching moment coefficient for a given alpha (angle of
+        attack).
+
+        :param alpha: angle of attack in degrees
+        :type alpha: float | int
+
+        :raises Exception: if alpha is out of the range of analysed alphas.
+
+        :rtype: float
+        """
+        return self.get_quantity('CDtot', alpha)
+
+    def get_quantity(self, quantity, alpha):
+        """ Return the drag coefficient for a given alpha (angle of attack).
+
+        :param quantity: the quantity that is requested
+        :type quantity: str
+
+        :param alpha: angle of attack in degrees
+        :type alpha: float | int
+
+        :raises Exception: if alpha is out of the range of analysed alphas.
+
+        :rtype: float
+        """
+        if not self.avl_alpha_start <= alpha <= self.avl_alpha_end:
+            raise Exception(
+                'The requested {} for alpha: {} is out of the range of '
+                'alpha_start: {} and alpha_end: {}. '
+                'Extrapolation is not supported.'
+                .format(quantity, alpha,
+                        self.avl_alpha_start, self.avl_alpha_end)
+            )
+
+        alphas = np.arange(self.avl_alpha_start, self.avl_alpha_end,
+                           self.avl_alpha_step)
+        values = [self.avl_analysis.results
+                  ['alpha_{0:0.1f}'.format(float(_alpha))]['Totals'][quantity]
+                  for _alpha in alphas]
+
+        return np.interp(alpha, alphas, values)
+
+    def get_custom_avl_results(self, alpha, show_trefftz_plot=False,
+                               show_geometry=False, **kwargs):
+        """
+
+        :param alpha: the angle of attack of the wing.
+        :type alpha: float
+        :param show_trefftz_plot: show the trefftz plot?
+        :type show_trefftz_plot: bool
+        :param show_geometry: show the wing geometry?
+        :type show_geometry: bool
+        :param kwargs: a (set of) key-value pair(s) defining a (set of)
+            movable deflection(s).
+
+        """
+        CASE_PARAMETERS = {'alpha': 'alpha', 'beta': 'beta',
+                           'roll_rate': 'pb/2V', 'pitch_rate': 'qc/2V',
+                           'yaw_rate': 'rb/2V'}
+
+        VALID_CONSTRAINTS = ['alpha', 'beta', 'pb/2V', 'qc/2V',
+                             'rb/2V', 'CL', 'CY', 'Cl', 'Cm', 'Cn']
+
+        settings = {'alpha': avl.Parameter(name='alpha', value=alpha)}
+        settings.update(kwargs)
+
+        cases = [avl.Case(name='custom', settings=settings)]
+
+        analysis = avl.Interface(cases=cases,
+                                 configuration=self.avl_configuration)
+        if show_trefftz_plot:
+            analysis.show_trefftz_plot()
+        if show_geometry:
+            analysis.show_geometry()
+        return analysis.results['custom']
+>>>>>>> 0bf9fa7f1a81ace82a77b933520260cd19b718cb
 
     # Attributes helping in instantiating LiftingSurface child objects
     @Attribute(settable=False)

@@ -3,8 +3,10 @@ from parapy.geom import *
 from fuselage_primitives.fuselage import Fuselage
 from scissor_plot import ScissorPlot
 from wing_primitives.external.wing import Wing
+import kbeutils.avl as avl
 import math
 import numpy as np
+from scipy import interpolate
 
 class Aircraft(GeomBase):
     """ This is the class representing the overall aircraft.
@@ -24,8 +26,9 @@ class Aircraft(GeomBase):
     tail_type = Input('conventional', validator=val.OneOf(['conventional',
                                                            't-tail']))
     # Main wing Inputs --------------------------------------------------------
-    main_wing_long_pos = Input(validator=val.Between(0, 1))
-    main_wing_lat_pos = Input(validator=val.Between(0, 1))
+    main_wing_long_pos = Input(validator=val.Range(0, 1))
+    main_wing_trans_pos = Input(validator=val.Range(0, 1))
+    main_wing_lat_pos = Input(validator=val.Range(0, 1))
 
     mw_n_wing_segments = Input(validator=lambda x: isinstance(x, int))
 
@@ -98,8 +101,8 @@ class Aircraft(GeomBase):
         return self.mw_span / 2.
 
     # Horizontal tail Inputs --------------------------------------------------
-    horizontal_tail_long_pos = Input(validator=val.Between(0, 1))
-    horizontal_tail_lat_pos = Input(validator=val.Between(0, 1))
+    horizontal_tail_trans_pos = Input(validator=val.Range(0, 1))
+    horizontal_tail_lat_pos = Input(validator=val.Range(0, 1))
 
     ht_n_wing_segments = Input(validator=lambda x: isinstance(x, int))
 
@@ -170,9 +173,14 @@ class Aircraft(GeomBase):
     ht_engine_length_cones1 = Input([2., 2.])
     ht_engine_length_cones2 = Input([1., 1.])
 
+<<<<<<< HEAD
     # Horizontal tail Inputs --------------------------------------------------
     vertical_tail_long_pos = Input(validator=val.Between(0, 1))
     vertical_tail_lat_pos = Input(validator=val.Between(0, 1))
+=======
+    # Vertical tail Inputs --------------------------------------------------
+    vertical_tail_trans_pos = Input(validator=val.Range(0, 1))
+>>>>>>> 0bf9fa7f1a81ace82a77b933520260cd19b718cb
 
     vt_n_wing_segments = Input(validator=lambda x: isinstance(x, int))
 
@@ -243,7 +251,6 @@ class Aircraft(GeomBase):
     vt_engine_length_cones1 = Input([2., 2.])
     vt_engine_length_cones2 = Input([1., 1.])
 
-
     __initargs__ = [
         # Fuselage inputs -----------------------------------------------------
         'fuselage_diameter', 'fuselage_tail_angle', 'fuselage_tail_length',
@@ -252,6 +259,8 @@ class Aircraft(GeomBase):
         # Tail configuration inputs
         'tail_type',
         # Main wing inputs ----------------------------------------------------
+        # Positioning
+        'main_wing_long_pos', 'main_wing_trans_pos', 'main_wing_lat_pos',
         # Main wing segments inputs
         'mw_n_wing_segments', 'mw_airfoil_names', 'mw_chords', 'mw_twists',
         'mw_sweeps_le', 'mw_dihedral_angles', 'mw_spanwise_positions',
@@ -289,6 +298,8 @@ class Aircraft(GeomBase):
         'mw_n_engines',
         'mw_engine_spanwise_positions', 'mw_engine_overhangs'
         # Horizontal tail inputs ----------------------------------------------
+        # Positioning
+        'horizontal_tail_trans_pos', 'horizontal_tail_lat_pos',
         # Horizontal tail wing segments inputs
         'ht_n_wing_segments',
         'ht_airfoil_names', 'ht_chords', 'ht_twists',
@@ -327,6 +338,8 @@ class Aircraft(GeomBase):
         'ht_n_engines',
         'ht_engine_spanwise_positions', 'ht_engine_overhangs',
         # Vertical tail inputs ----------------------------------------------
+        # Positioning
+        'vertical_tail_trans_pos',
         # Vertical tail wing segments inputs
         'vt_n_wing_segments',
         'vt_airfoil_names', 'vt_chords', 'vt_twists',
@@ -366,6 +379,17 @@ class Aircraft(GeomBase):
         'vt_engine_spanwise_positions', 'vt_engine_overhangs'
     ]
 
+    # Optional inputs
+    name = Input('aircraft')
+    color = Input('white')
+    transparency = Input(0.5)
+    avl_CL_start = Input(0.1)
+    avl_CL_end = Input(0.8)
+    avl_CL_step = Input(0.1)
+    avl_delta_e_start = Input(-30.)
+    avl_delta_e_end = Input(31.)
+    avl_delta_e_step = Input(30.)
+
     @Part
     def fuselage(self):
         return Fuselage(
@@ -381,13 +405,10 @@ class Aircraft(GeomBase):
     def main_wing_starboard(self):
         return Wing(
             name='main_wing_starboard',
-            location=translate(
-                self.fuselage.position.location,
-                self.fuselage.position.Vx,
-                self.fuselage.length * self.main_wing_long_pos,
-                self.fuselage.position.Vy,
-                self.fuselage.diameter / 2. * self.main_wing_lat_pos
-            ),
+            location=self.fuselage.point_at_fractions(
+                self.main_wing_long_pos,
+                self.main_wing_trans_pos,
+                self.main_wing_lat_pos),
             map_down=[
                 # Wing segments inputs
                 'mw_n_wing_segments->n_wing_segments',
@@ -447,13 +468,10 @@ class Aircraft(GeomBase):
         return Wing(
             name='main_wing_port',
             is_starboard=False,
-            location=translate(
-                self.fuselage.position.location,
-                self.fuselage.position.Vx,
-                self.fuselage.length * self.main_wing_long_pos,
-                self.fuselage.position.Vy,
-                -self.fuselage.diameter / 2. * self.main_wing_lat_pos
-            ),
+            location=self.fuselage.point_at_fractions(
+                self.main_wing_long_pos,
+                self.main_wing_trans_pos,
+                -self.main_wing_lat_pos),
             map_down=[
                 # Wing segments inputs
                 'mw_n_wing_segments->n_wing_segments',
@@ -509,31 +527,12 @@ class Aircraft(GeomBase):
             ]
         )
 
-    @Attribute
-    def wing_area(self):
-        return sum([self.main_wing_starboard.reference_area,
-                    self.main_wing_port.reference_area])
-
-    @Attribute
-    def aspect_ratio(self):
-        return self.mw_span ** 2 / self.wing_area
-
-    @Attribute
-    def net_wing_area(self):
-        net_wing = Subtracted(self.main_wing_starboard.planform,
-                              self.fuselage.solid)
-        # TODO: hangt af van goed aansluiten van tail aan cabin.
-        return self.wing_area - 2.
-
     @Part
     def vertical_tail(self):
         return Wing(
             name='vertical_tail',
             wing_cant=90.,
-            location=translate(
-                self.fuselage.end,
-                -self.position.Vx,
-                self.vt_chords[0]),
+            location=translate(self.fuselage.end, 'x_', self.vt_chords[0]),
             is_starboard=False,
             map_down=[
                 # Wing segments inputs
@@ -594,9 +593,12 @@ class Aircraft(GeomBase):
     def horizontal_tail_starboard(self):
         return Wing(
             name='horizontal_tail_starboard',
-            location=translate(
-                self.fuselage.end, -self.position.Vx, self.ht_chords[0]
-            ) if self.tail_type == 'conventional' else
+            location=translate(self.fuselage.point_at_fractions(
+                1.,
+                self.horizontal_tail_trans_pos,
+                self.horizontal_tail_lat_pos),
+                'x_', self.ht_chords[0])
+            if self.tail_type == 'conventional' else
             self.vertical_tail.sections[-1].position.location,
             map_down=[
                 # Wing segments inputs
@@ -658,9 +660,12 @@ class Aircraft(GeomBase):
         return Wing(
             name='horizontal_tail_port',
             is_starboard=False,
-            location=translate(
-                self.fuselage.end, -self.position.Vx, self.ht_chords[0]
-            ) if self.tail_type == 'conventional' else
+            location=translate(self.fuselage.point_at_fractions(
+                1.,
+                self.horizontal_tail_trans_pos,
+                -self.horizontal_tail_lat_pos),
+                'x_', self.ht_chords[0])
+            if self.tail_type == 'conventional' else
             self.vertical_tail.sections[-1].position.location,
             map_down=[
                 # Wing segments inputs
@@ -717,19 +722,20 @@ class Aircraft(GeomBase):
             ]
         )
 
-    @Attribute
-    def symmetry_plane(self):
-        return Plane(self.position, self.position.Vy, self.position.Vx)
-
     @Part
     def scissor_plot(self):
         return ScissorPlot(
             # TODO: Als het mogelijk is, deze CL_0 berekeningen enzo even
             #  koppelen aan AVL.
-            CL_0=self.main_wing_starboard.sections[0].CL_0,
-            CM_0_airfoil=self.main_wing_starboard.sections[0].CM_0,
-            cl_alpha_horizontal=math.degrees(self.horizontal_tail_starboard
-                                             .sections[0].CL_alpha),
+            CL_0=self.main_wing_starboard.CL_0,
+            Cm_0=self.main_wing_starboard.Cm_0,
+            CL_alpha_wing=math.degrees(self.main_wing_starboard.CL_alpha),
+            CL_alpha_horizontal=math.degrees(self.horizontal_tail_starboard
+                                             .CL_alpha),
+            sweep_angle_025c=math.radians(self.main_wing_starboard
+                                          .sweep_c_over_4),
+            fuselage_diameter=self.fuselage.diameter,
+            fuselage_length=self.fuselage.length,
             mac=self.main_wing_starboard.mean_aerodynamic_chord,
             span=self.mw_span,
             aspect_ratio=self.aspect_ratio,
@@ -739,11 +745,125 @@ class Aircraft(GeomBase):
             l_h=self.l_h,
             z_h=self.z_h,
             x_ac=self.x_ac_wing_fus,
-            cl_alpha_a_h=self.cl_alpha_a_h,
+            CL_alpha_a_h=self.Cl_alpha_a_h,
             tail_type=self.tail_type,
             forward_cg=self.forward_cg,
             aft_cg=self.aft_cg
         )
+
+    @Attribute
+    def symmetry_plane(self):
+        return Plane(self.position, self.position.Vy, self.position.Vx)
+
+    @Attribute
+    def wing_area(self):
+        """ Return the wing area.
+
+        :rtype: float
+        """
+        return sum([self.main_wing_starboard.reference_area,
+                    self.main_wing_port.reference_area])
+
+    @Attribute
+    def mean_aerodynamic_chord(self):
+        return self.main_wing_starboard.mean_aerodynamic_chord
+
+    @Attribute
+    def mac_position(self):
+        return Point(self.main_wing_starboard.mac_position.x,
+                     0.,
+                     self.main_wing_starboard.mac_position.x)
+
+    @Attribute
+    def aspect_ratio(self):
+        """ The overall aspect / slenderness ratio of the wing.
+
+        :rtype: float
+        """
+        return self.mw_span ** 2 / self.wing_area
+
+    @Part
+    def avl_analysis(self):
+        """ The AVL analysis wrapper part.
+        """
+        return avl.Interface(cases=self.cases,
+                             configuration=self.avl_configuration)
+
+    @Attribute
+    def avl_configuration(self):
+        """ The avl configuration of this aircraft, such that it can be
+        interpreted by AVL.
+        """
+        return avl.Configuration(
+            name=self.name,
+            surfaces=[self.main_wing_starboard.avl_surface,
+                      self.horizontal_tail_starboard.avl_surface,
+                      self.vertical_tail.avl_surface],
+            mach=0.8,
+            reference_area=self.wing_area,
+            reference_chord=self.main_wing_starboard.mean_aerodynamic_chord,
+            reference_span=self.mw_span,
+            reference_point=Point(self.main_wing_starboard.mac_position.x,
+                                  0.,
+                                  self.main_wing_starboard.mac_position.z)
+            )
+
+    @Attribute
+    def avl_configuration_less_tail(self):
+        """ The avl configuration of this aircraft without tail, such that it
+        can be interpreted by AVL.
+        """
+        # TODO: add fuselage body
+        return avl.Configuration(
+            name=self.name,
+            surfaces=[self.main_wing_starboard.avl_surface],
+            mach=0.8,
+            reference_area=self.wing_area,
+            reference_chord=self.main_wing_starboard.mean_aerodynamic_chord,
+            reference_span=self.mw_span,
+            reference_point=Point(self.main_wing_starboard.mac_position.x,
+                                  0.,
+                                  self.main_wing_starboard.mac_position.z)
+            )
+
+    @Attribute
+    def cases(self):
+        return [avl.Case(name='CL_{:.1f}_delta_e_{:.1f}'.format(CL, delta_e),
+                         settings={'alpha': avl.Parameter(name='alpha',
+                                                          value=CL,
+                                                          constraint='CL'),
+                                   'elevator': delta_e})
+                for CL in np.arange(self.avl_CL_start,
+                                    self.avl_CL_end,
+                                    self.avl_CL_step)
+                for delta_e in np.arange(self.avl_delta_e_start,
+                                         self.avl_delta_e_end,
+                                         self.avl_delta_e_step)]
+
+    @Attribute
+    def net_wing_area(self):
+        """ Return the net wing area of the wing portion that sticks out of
+        the fuselage.
+
+        :rtype: float
+        """
+        net_semi_wing = Subtracted(self.main_wing_starboard.planform,
+                                   self.fuselage.solid)
+        return 2. * sum(fce.area for fce in net_semi_wing.faces)
+
+    @Attribute
+    def net_root_le_point(self):
+        """ Return the root leading edge point of the portion of the wing
+        that sticks out of the fuselage.
+
+        :rtype: float
+        """
+        net_semi_wing = Subtracted(self.main_wing_starboard.planform,
+                                   self.fuselage.solid)
+        vrtex = min(net_semi_wing.vertices,
+                    key=lambda v: (v.point.distance(self.main_wing_starboard
+                                                    .sections[0].position)))
+        return vrtex.point
 
     @Attribute
     def x_ac_wing_fus(self):
@@ -758,15 +878,13 @@ class Aircraft(GeomBase):
         x_ac_engines = sum(-4.0 * width_nacelle[idx] ** 2
                            * self.distance_nacelle_mac[idx] /
                            (self.wing_area * wing.mean_aerodynamic_chord *
-                            self.cl_alpha_a_h)
+                            self.Cl_alpha_a_h)
                            for idx in range(self.mw_n_engines / 2))
         x_ac_wing = 0.25
-        # TODO: hangt af van fuselage tail cabin connection via l_nose_LE
-        # Afstand van de nose tot eerste punt waar wing uit fus komt.
-        l_nose_LE = wing.position.x
+        l_nose_le = self.net_root_le_point.x - self.position.x
         mac = self.main_wing_starboard.mean_aerodynamic_chord
-        x_ac_rest_1 = -1.8 / self.cl_alpha_a_h * self.fuselage_diameter ** 2 \
-                      * l_nose_LE / (self.wing_area * mac)
+        x_ac_rest_1 = -1.8 / self.Cl_alpha_a_h * self.fuselage_diameter ** 2 \
+                      * l_nose_le / (self.wing_area * mac)
         x_ac_rest_2 = 0.273 / (1 + wing.taper_ratio) * (
                 self.wing_area / self.mw_span) * self.fuselage_diameter * (
                               self.mw_span - self.fuselage_diameter) / \
@@ -776,20 +894,19 @@ class Aircraft(GeomBase):
         return x_ac_wing + x_ac_rest_1 + x_ac_rest_2 + x_ac_engines
 
     @Attribute
-    def cl_alpha_a_h(self):
+    def Cl_alpha_a_h(self):
         """ Calculates the Lift curve coefficient of the fuselage wing body.
         This is the aircraft with fuselage and wing without horizontal
         tailplane.
         :rtype: float
         """
-        cl_alpha_wing = self.main_wing_starboard.sections[0].CL_alpha
+        cl_alpha_wing = math.degrees(self.main_wing_starboard.CL_alpha)
         # TODO: CL_alpha a_h (main wings + fuselage uit AVL halen.
-        gradient_deg = cl_alpha_wing * (
+        gradient_rad = cl_alpha_wing * (
                 1 + 2.15 * self.fuselage_diameter / self.mw_span) \
                 * self.net_wing_area / self.wing_area + math.pi / 2. * \
                 self.fuselage_diameter ** 2 \
                 / self.wing_area
-        gradient_rad = math.degrees(gradient_deg)
         return gradient_rad
 
     @Attribute
@@ -812,18 +929,141 @@ class Aircraft(GeomBase):
     @Attribute
     def forward_cg(self):
         # TODO Hier nog even de uitgerekende forward and aft c.g's invullen
-        return 0.2
+        return 0.12
 
     @Attribute
     def aft_cg(self):
         # TODO Hier nog even de uitgerekende forward and aft c.g's invullen
-        return 0.5
+        return 0.3
+
+    def get_alpha(self, CL, delta_e):
+        """ Return the drag coefficient for a given alpha (angle
+        of attack) and delta_e (elevator deflection).
+
+        :param CL: lift coefficient
+        :type CL: float | int
+
+        :param delta_e: elevator deflection in degrees
+        :type delta_e: float | int
+
+        :raises Exception: if alpha is out of the range of analysed alphas.
+
+        :rtype: float
+        """
+        return self.get_quantity('Alpha', CL, delta_e)
+
+    def get_Cm(self, CL, delta_e):
+        """ Return the pitching moment coefficient for a given alpha (angle
+        of attack) and delta_e (elevator deflection).
+
+        :param CL: lift coefficient
+        :type CL: float | int
+
+        :param delta_e: elevator deflection in degrees
+        :type delta_e: float | int
+
+        :raises Exception: if alpha is out of the range of analysed alphas.
+
+        :rtype: float
+        """
+        return self.get_quantity('Cmtot', CL, delta_e)
+
+    def get_CD(self, CL, delta_e):
+        """ Return the drag coefficient for a given alpha (angle
+        of attack) and delta_e (elevator deflection).
+
+        :param CL: lift coefficient
+        :type CL: float | int
+
+        :param delta_e: elevator deflection in degrees
+        :type delta_e: float | int
+
+        :raises Exception: if alpha is out of the range of analysed alphas.
+
+        :rtype: float
+        """
+        return self.get_quantity('CDtot', CL, delta_e)
+
+    def get_quantity(self, quantity, CL, delta_e):
+        """ Return any AVL 'total' quantity for a given alpha (angle
+        of attack) and delta_e (elevator deflection).
+
+        :param quantity: the quantity that is requested
+        :type quantity: str
+
+        :param CL: lift coefficient
+        :type CL: float | int
+
+        :param delta_e: elevator deflection in degrees
+        :type delta_e: float | int
+
+        :raises Exception: if alpha is out of the range of analysed alphas.
+
+        :rtype: numpy.ndarray[float]
+        """
+        if not self.avl_CL_start <= CL <= self.avl_CL_end:
+            raise Exception(
+                'The requested {} for alpha: {} is out of the range of '
+                'alpha_start: {} and alpha_end: {}. '
+                'Extrapolation is not supported.'
+                .format(quantity, CL, self.avl_CL_start, self.avl_CL_end)
+            )
+        if not self.avl_delta_e_start <= delta_e <= self.avl_delta_e_end:
+            raise Exception(
+                'The requested {} for alpha: {} is out of the range of '
+                'alpha_start: {} and alpha_end: {}. '
+                'Extrapolation is not supported.'
+                .format(quantity, delta_e,
+                        self.avl_delta_e_start, self.avl_delta_e_end)
+            )
+
+        CLs = np.arange(self.avl_CL_start, self.avl_CL_end, self.avl_CL_step)
+
+        delta_es = np.arange(self.avl_delta_e_start, self.avl_delta_e_end,
+                             self.avl_delta_e_step)
+        values = [[self.avl_analysis.results['CL_{:.1f}_delta_e_{:.1f}'
+                   .format(float(_CL), float(_delta_e))]['Totals'][quantity]
+                   for _CL in CLs]
+                  for _delta_e in delta_es]
+
+        f = interpolate.interp2d(CLs, delta_es, values, bounds_error=True)
+
+        return f(CL, delta_e)
+
+    def get_custom_avl_results(self, alpha, show_trefftz_plot=False,
+                               show_geometry=False, **kwargs):
+        """
+
+        :param alpha: the angle of attack of the configuration.
+        :type alpha: float
+        :param show_trefftz_plot: show the trefftz plot?
+        :type show_trefftz_plot: bool
+        :param show_geometry: show the wing geometry?
+        :type show_geometry: bool
+        :param kwargs: a (set of) key-value pair(s) defining a (set of)
+            movable deflection(s).
+
+        """
+        settings = {'alpha': avl.Parameter(name='alpha', value=alpha)}
+        settings.update(kwargs)
+
+        cases = [avl.Case(name='custom', settings=settings)]
+
+        analysis = avl.Interface(cases=cases,
+                                 configuration=self.avl_configuration)
+        if show_trefftz_plot:
+            analysis.show_trefftz_plot()
+        if show_geometry:
+            analysis.show_geometry()
+        return analysis.results['custom']
 
 
 if __name__ == '__main__':
     from parapy.gui import display
 
     obj = Aircraft(
+        # Stability inputs
+        stability_margin=0.05,
         # Fuselage inputs -----------------------------------------------------
         fuselage_tail_angle=30., fuselage_tail_length=5.,
         fuselage_cockpit_length=3., fuselage_cabin_length=20.,
@@ -832,7 +1072,7 @@ if __name__ == '__main__':
         tail_type='conventional',
         # Main wing inputs ----------------------------------------------------
         # Wing positioning
-        main_wing_long_pos=0.4, main_wing_lat_pos=0.5,
+        main_wing_long_pos=0.4, main_wing_trans_pos=0.5, main_wing_lat_pos=0.5,
         # Wing segments inputs
         mw_n_wing_segments=3,
         mw_airfoil_names=['NACA2412', 'NACA2412', 'whitcomb', 'whitcomb'],
@@ -886,7 +1126,7 @@ if __name__ == '__main__':
         mw_engine_overhangs=[0.4, 0.3],
         # Horizontal tail inputs ----------------------------------------------
         # Wing positioning
-        horizontal_tail_long_pos=0.4, horizontal_tail_lat_pos=0.5,
+        horizontal_tail_trans_pos=0.4, horizontal_tail_lat_pos=0.5,
         # Wing segments inputs
         ht_n_wing_segments=1,
         ht_airfoil_names=['NACA0018', 'NACA0012'],
@@ -933,7 +1173,7 @@ if __name__ == '__main__':
         ht_movables_symmetric=[True],
         # Vertical tail inputs ------------------------------------------------
         # Wing positioning
-        vertical_tail_long_pos=0.4, vertical_tail_lat_pos=0.5,
+        vertical_tail_trans_pos=0.5,
         # Wing segments inputs
         vt_n_wing_segments=1,
         vt_airfoil_names=['NACA0018', 'NACA0012'],

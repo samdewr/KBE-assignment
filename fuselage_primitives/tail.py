@@ -30,7 +30,7 @@ class TailCone(LoftedSurface):
                 """
         return self.length / (len(self.tail_scaling_list) - 1)
 
-    @Part
+    @Part(in_tree=False)
     def tail_circles(self):
         """ Builds a continuous number of circles. These circles become
         smaller and smaller by each circle with the help of the scaling
@@ -65,6 +65,15 @@ class TailCone(LoftedSurface):
         :rtype: parapy.geom.occ.curve.FittedCurve
         """
         return FittedCurve([profile.center for profile in self.profiles])
+
+    @Attribute
+    def upper_line(self):
+        """ Return the :attr:`center_line` projected onto the upper half of
+        the surface (onto the 'ceiling').
+
+        :rtype: parapy.geom.occ.projection.ProjectedCurve
+        """
+        return ProjectedCurve(self.center_line, self, self.position.Vz)
 
 
 if __name__ == '__main__':

@@ -1,6 +1,5 @@
 from parapy.core import *
 from parapy.geom import *
-
 import matplotlib.pyplot as plt
 
 import numpy as np
@@ -18,33 +17,30 @@ class ScissorPlot(Base):
     """
 
     # Airfoil Specifics
-
-    CL_0 = Input(.5)  # lift at zero angle of attack.
-    CM_0_airfoil = Input(0.)  # zero pitching moment
+    CL_0 = Input()  # lift at zero angle of attack.
+    Cm_0 = Input()  # zero pitching moment
 
     # Wing Specifics
-
-    span = Input(20., validator=val.is_positive)  # span of the wing.
-    aspect_ratio = Input( validator=val.is_positive)  # The aspect ratio of th wing.
-    wing_area = Input( validator=val.is_positive)  # Wing area
-    net_wing_area = Input( validator=val.is_positive)  # Wing area- the area within the fuselage
+    span = Input(validator=val.is_positive)  # span of the wing.
+    aspect_ratio = Input(validator=val.is_positive)  # The aspect ratio of th wing.
+    wing_area = Input(validator=val.is_positive)  # Wing area
+    net_wing_area = Input(validator=val.is_positive)  # Wing area- the area within the fuselage
 
     l_h = Input()  # horizontal distance between te tail and the c.g.
-    z_h = Input(1.0)  # Vertical distance between c.g. and the tail
+    z_h = Input()  # Vertical distance between c.g. and the tail
     x_ac = Input()  # mac position wing & fus combination in main wing mac.
-    cl_alpha_a_h = Input( validator=val.is_positive)  # CL alpha of the wing fus combination.
+    CL_alpha_a_h = Input(validator=val.is_positive)  # CL alpha of the wing fus combination.
     sweep_angle_025c = Input()  # sweep angle at quarter chord
-    cl_alpha_wing = Input( validator=val.is_positive)  # Lift curve coefficient.
-    cl_alpha_horizontal = Input( validator=val.is_positive)  # Lift curve of the tail
-    mac = Input( validator=val.is_positive)  # Mean aerodynamic chord
-    taper_ratio = Input( validator=val.is_positive)  # Taper ratio of the main wing.
+    CL_alpha_wing = Input(validator=val.is_positive)  # Lift curve coefficient.
+    CL_alpha_horizontal = Input(validator=val.is_positive)  # Lift curve of
+    # the tail
+    mac = Input(validator=val.is_positive)  # Mean aerodynamic chord
     stability_margin = Input()
 
     # Other Inputs
-    length_fuselage = Input( validator=val.is_positive)  # Length of the fuselage
-    diameter_fuselage = Input( validator=val.is_positive)  # needed for stabiliser
+    fuselage_length = Input(validator=val.is_positive)  # Length of the fuselage
+    fuselage_diameter = Input(validator=val.is_positive)  # needed for stabiliser
 
-    l_nose_LE = Input( validator=val.is_positive)  # Distance between nose and the leading edge of the
     # wing
     tail_type = Input(validator=val.is_string)  # Input depending
     # of what tail configuration is used.
@@ -93,31 +89,26 @@ class ScissorPlot(Base):
                   (r ** 2 / (r ** 2 + 0.7915 + 5.0734 * m_tv ** 2)) ** 0.3113)\
             * (1 - sqrt(m_tv ** 2 / (1 + m_tv ** 2)))
 
-        return k_e_lambda / k_e_0 * (first + second) * self.cl_alpha_wing / \
+        return k_e_lambda / k_e_0 * (first + second) * self.CL_alpha_wing / \
                (pi * self.aspect_ratio)
 
     @Attribute
-    def cm_ac(self):
+    def Cm_ac(self):
         """ The moment coefficient around the aerodynamic centre is
         calculated. This is used for the controllability curve of the aircraft.
                 :rtype: float
                 """
-        cm_ac_w = self.CM_0_airfoil *\
-                (self.aspect_ratio * (cos(radians(self.sweep_angle_025c))) ** 2
-                 / (self.aspect_ratio
-                + 2 *cos(radians(self.sweep_angle_025c))))
+        Cm_ac_engines = -0.05
 
-        cm_ac_engines = -0.05
+        Cm_ac_fuselage = -1.8 \
+                         * (1 - 2.5 * self.fuselage_diameter
+                            / self.fuselage_length) \
+                         * pi * self.fuselage_diameter \
+                         * self.fuselage_diameter * self.fuselage_length \
+                         / (4 * self.wing_area* self.mac) \
+                         * self.CL_0 / self.CL_alpha_a_h
 
-        cm_ac_fuselage = -1.8\
-                         * (1 - 2.5 * self.diameter_fuselage
-                                /self.length_fuselage)\
-                         * pi * self.diameter_fuselage\
-                         * self.diameter_fuselage * self.length_fuselage\
-                         / (4 * self.wing_area* self.mac)\
-                         * self.CL_0 / self.cl_alpha_a_h
-
-        return cm_ac_engines + cm_ac_w + cm_ac_fuselage
+        return Cm_ac_engines + self.Cm_0 + Cm_ac_fuselage
 
     @Attribute
     def cg_range(self):
@@ -130,7 +121,7 @@ class ScissorPlot(Base):
     @Attribute
     def c_l_h(self):
         """ Value dependent on the type of tail. Since a conventional
-        aircraft is assumed it isset
+        aircraft is assumed it is set
 
                 :rtype: float
                 """
@@ -147,11 +138,11 @@ class ScissorPlot(Base):
         list = []
         for i in self.cg_range:
             first = i / \
-                    (self.c_l_h / self.cl_alpha_a_h
+                    (self.c_l_h / self.CL_alpha_a_h
                         * self.l_h / self.mac * self.Vh_V_ratio ** 2)
 
-            second = (self.cm_ac / self.cl_alpha_a_h - self.x_ac) \
-                     / (self.c_l_h / self.cl_alpha_a_h
+            second = (self.Cm_ac / self.CL_alpha_a_h - self.x_ac) \
+                     / (self.c_l_h / self.CL_alpha_a_h
                         * self.l_h / self.mac * self.Vh_V_ratio ** 2)
 
             list.append(first + second)
@@ -168,13 +159,13 @@ class ScissorPlot(Base):
         list = []
         for j in self.cg_range:
 
-            first = j / (self.cl_alpha_horizontal / self.cl_alpha_a_h *
+            first = j / (self.CL_alpha_horizontal / self.CL_alpha_a_h *
                          (1 - self.downwash_gradient) * self.l_h /
                          self.mac * self.Vh_V_ratio ** 2)
             second = (self.x_ac - self.stability_margin) /\
-                     (self.cl_alpha_horizontal / self.cl_alpha_a_h *
-                        (1 - self.downwash_gradient) * self.l_h /
-                        self.mac * self.Vh_V_ratio ** 2)
+                     (self.CL_alpha_horizontal / self.CL_alpha_a_h *
+                      (1 - self.downwash_gradient) * self.l_h /
+                      self.mac * self.Vh_V_ratio ** 2)
             list.append(first - second)
         return list
 
@@ -187,40 +178,40 @@ class ScissorPlot(Base):
                                 :rtype: float
                 """
         stability_forward_cg = self.forward_cg /\
-                               (self.cl_alpha_horizontal /self.cl_alpha_a_h
-                                *(1 - self.downwash_gradient) * self.l_h
-                                /self.mac * self.Vh_V_ratio ** 2) \
+                               (self.CL_alpha_horizontal / self.CL_alpha_a_h
+                                * (1 - self.downwash_gradient) * self.l_h
+                                / self.mac * self.Vh_V_ratio ** 2) \
                                 - (self.x_ac - self.stability_margin)\
-                               / (self.cl_alpha_horizontal / self.cl_alpha_a_h
-                                  *(1 - self.downwash_gradient)
+                               / (self.CL_alpha_horizontal / self.CL_alpha_a_h
+                                  * (1 - self.downwash_gradient)
                                   * self.l_h / self.mac * self.Vh_V_ratio ** 2)
 
         stability_aft_cg =  self.aft_cg /\
-                               (self.cl_alpha_horizontal /self.cl_alpha_a_h
-                                *(1 - self.downwash_gradient) * self.l_h
-                                /self.mac * self.Vh_V_ratio ** 2) \
+                               (self.CL_alpha_horizontal / self.CL_alpha_a_h
+                                * (1 - self.downwash_gradient) * self.l_h
+                                / self.mac * self.Vh_V_ratio ** 2) \
                                 - (self.x_ac - self.stability_margin)\
-                               / (self.cl_alpha_horizontal / self.cl_alpha_a_h
-                                  *(1 - self.downwash_gradient)
+                               / (self.CL_alpha_horizontal / self.CL_alpha_a_h
+                                  * (1 - self.downwash_gradient)
                                   * self.l_h / self.mac * self.Vh_V_ratio ** 2)
 
         controllability_forward_cg = self.forward_cg \
-                                     / (self.c_l_h / self.cl_alpha_a_h
+                                     / (self.c_l_h / self.CL_alpha_a_h
                                       * self.l_h / self.mac
                                       * self.Vh_V_ratio ** 2) \
-                                     +(self.cm_ac / self.cl_alpha_a_h -
+                                     +(self.Cm_ac / self.CL_alpha_a_h -
                                        self.x_ac) \
-                                        / (self.c_l_h /self.cl_alpha_a_h
+                                        / (self.c_l_h /self.CL_alpha_a_h
                                            * self.l_h / self.mac
                                            * self.Vh_V_ratio ** 2)
 
         controllability_aft_cg = self.aft_cg \
-                                     / (self.c_l_h / self.cl_alpha_a_h
+                                     / (self.c_l_h / self.CL_alpha_a_h
                                       * self.l_h / self.mac
                                       * self.Vh_V_ratio ** 2) \
-                                     +(self.cm_ac / self.cl_alpha_a_h -
+                                     +(self.Cm_ac / self.CL_alpha_a_h -
                                        self.x_ac) \
-                                        / (self.c_l_h /self.cl_alpha_a_h
+                                        / (self.c_l_h /self.CL_alpha_a_h
                                            * self.l_h / self.mac
                                            * self.Vh_V_ratio ** 2)
 
@@ -237,18 +228,21 @@ class ScissorPlot(Base):
             elif stability_diff > control_diff:
                 return stability_aft_cg * self.wing_area
 
-
     @Attribute(in_tree=False)
     def scissor_curve(self):
         """ Plots the scissor plot to get a visual idea about the
         controllability and stability constraints.
 
-                                :rtype: matplotlip.pyplot.plot
-                """
+        :rtype: matplotlib.pyplot.plot
+        """
         plt.plot(self.cg_range, self.stability_values, label='Stability')
         plt.plot(self.cg_range, self.controllability_values,
                  label='Controllability')
-        plt.xlabel('X_cg/mac')
+        plt.xlim([0, 1])
+        plt.ylim([0, 1])
+        # plt.xlabel(r'\frac{x_{cg}}{mac}$')
+        # plt.ylabel(r'$\frac{S_{h}}{S}$')
+        plt.xlabel('x_cg/mac')
         plt.ylabel('S_h/S')
         plt.legend(loc='upper left')
         a = plt.show()

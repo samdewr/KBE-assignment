@@ -35,6 +35,14 @@ class Cabin(LoftedSurface):
         """
         return FittedCurve([profile.center for profile in self.profiles])
 
+    @Attribute
+    def upper_line(self):
+        """ Return the :attr:`center_line` projected onto the upper half of
+        the surface (onto the 'ceiling').
+
+        :rtype: parapy.geom.occ.projection.ProjectedCurve
+        """
+        return ProjectedCurve(self.center_line, self, self.position.Vz)
 
 if __name__ == '__main__':
     from parapy.gui import display
