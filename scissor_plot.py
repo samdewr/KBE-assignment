@@ -18,7 +18,7 @@ class ScissorPlot(Base):
 
     # Airfoil Specifics
     CL_0 = Input()  # lift at zero angle of attack.
-    Cm_0_airfoil = Input()  # zero pitching moment
+    Cm_0 = Input()  # zero pitching moment
 
     # Wing Specifics
     span = Input(validator=val.is_positive)  # span of the wing.
@@ -95,20 +95,14 @@ class ScissorPlot(Base):
                (pi * self.aspect_ratio)
 
     @Attribute
-    def cm_ac(self):
+    def Cm_ac(self):
         """ The moment coefficient around the aerodynamic centre is
         calculated. This is used for the controllability curve of the aircraft.
                 :rtype: float
                 """
-        cm_ac_w = self.Cm_0_airfoil *\
-                (self.aspect_ratio * (cos(radians(self.sweep_angle_025c))) ** 2
-                 / (self.aspect_ratio
-                + 2 *cos(radians(self.sweep_angle_025c))))
+        Cm_ac_engines = -0.05
 
-
-        cm_ac_engines = -0.05
-
-        cm_ac_fuselage = -1.8 \
+        Cm_ac_fuselage = -1.8 \
                          * (1 - 2.5 * self.fuselage_diameter
                             / self.fuselage_length) \
                          * pi * self.fuselage_diameter \
@@ -116,7 +110,7 @@ class ScissorPlot(Base):
                          / (4 * self.wing_area* self.mac) \
                          * self.CL_0 / self.CL_alpha_a_h
 
-        return cm_ac_engines + cm_ac_w + cm_ac_fuselage
+        return Cm_ac_engines + self.Cm_0 + Cm_ac_fuselage
 
     @Attribute
     def cg_range(self):
@@ -129,11 +123,11 @@ class ScissorPlot(Base):
     @Attribute
     def c_l_h(self):
         """ Value dependent on the type of tail. Since a conventional
-        aircraft is assumed it isset
+        aircraft is assumed it is set
 
                 :rtype: float
                 """
-        return -0.8
+        return -1
 
     @Attribute
     def controllability_values(self):
@@ -149,7 +143,7 @@ class ScissorPlot(Base):
                     (self.c_l_h / self.CL_alpha_a_h
                         * self.l_h / self.mac * self.Vh_V_ratio ** 2)
 
-            second = (self.cm_ac / self.CL_alpha_a_h - self.x_ac) \
+            second = (self.Cm_ac / self.CL_alpha_a_h - self.x_ac) \
                      / (self.c_l_h / self.CL_alpha_a_h
                         * self.l_h / self.mac * self.Vh_V_ratio ** 2)
 
@@ -207,7 +201,7 @@ class ScissorPlot(Base):
                                      / (self.c_l_h / self.CL_alpha_a_h
                                       * self.l_h / self.mac
                                       * self.Vh_V_ratio ** 2) \
-                                     +(self.cm_ac / self.CL_alpha_a_h -
+                                     +(self.Cm_ac / self.CL_alpha_a_h -
                                        self.x_ac) \
                                         / (self.c_l_h /self.CL_alpha_a_h
                                            * self.l_h / self.mac
@@ -217,7 +211,7 @@ class ScissorPlot(Base):
                                      / (self.c_l_h / self.CL_alpha_a_h
                                       * self.l_h / self.mac
                                       * self.Vh_V_ratio ** 2) \
-                                     +(self.cm_ac / self.CL_alpha_a_h -
+                                     +(self.Cm_ac / self.CL_alpha_a_h -
                                        self.x_ac) \
                                         / (self.c_l_h /self.CL_alpha_a_h
                                            * self.l_h / self.mac

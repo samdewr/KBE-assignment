@@ -484,7 +484,7 @@ class Wing(SewnShell):
             else self.parent.mean_aerodynamic_chord
         span = self.semi_span * 2 if is_root else self.parent.mw_span
         ref_point = Point(self.mac_position.x, 0., self.mac_position.y) if \
-            is_root else Point(self.parent.mac_position)
+            is_root else self.parent.mac_position
         return avl.Configuration(name=self.name,
                                  surfaces=[self.avl_surface],
                                  mach=0.8,
@@ -614,7 +614,6 @@ class Wing(SewnShell):
                 .format(quantity, alpha,
                         self.avl_alpha_start, self.avl_alpha_end)
             )
-        alpha = 'alpha_{0:0.1f}'.format(float(alpha))
 
         alphas = np.arange(self.avl_alpha_start, self.avl_alpha_end,
                            self.avl_alpha_step)

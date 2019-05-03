@@ -731,8 +731,8 @@ class Aircraft(GeomBase):
             # TODO: Als het mogelijk is, deze CL_0 berekeningen enzo even
             #  koppelen aan AVL.
             CL_0=self.main_wing_starboard.CL_0,
-            Cm_0_airfoil=self.main_wing_starboard.Cm_0,
-            CL_alpha_wing=self.main_wing_starboard.CL_alpha,
+            Cm_0=self.main_wing_starboard.Cm_0,
+            CL_alpha_wing=math.degrees(self.main_wing_starboard.CL_alpha),
             CL_alpha_horizontal=math.degrees(self.horizontal_tail_starboard
                                              .CL_alpha),
             sweep_angle_025c=math.radians(self.main_wing_starboard
@@ -1021,8 +1021,8 @@ class Aircraft(GeomBase):
                         self.avl_delta_e_start, self.avl_delta_e_end)
             )
 
-        CLs = np.arange(self.avl_CL_start, self.avl_CL_end,
-                        self.avl_CL_step)
+        CLs = np.arange(self.avl_CL_start, self.avl_CL_end, self.avl_CL_step)
+
         delta_es = np.arange(self.avl_delta_e_start, self.avl_delta_e_end,
                              self.avl_delta_e_step)
         values = [[self.avl_analysis.results['CL_{:.1f}_delta_e_{:.1f}'
