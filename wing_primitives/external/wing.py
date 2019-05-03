@@ -104,14 +104,15 @@ class Wing(SewnShell):
     movables_names = Input(validator=val.all_is_string)
 
     # Engines input
-    n_engines = Input(validator=lambda x: isinstance(x, int))
-    engine_spanwise_positions = Input()#validator=val.all_is_number)
-    engine_overhangs = Input()#validator=val.all_is_number)
-    engine_diameters_inlet = Input([2., 2.])#validator=val.all_is_number)
-    engine_diameters_outlet = Input([1., 1.])#validator=val.)
-    engine_diameters_part2 = Input([0.5, 0.5])
-    engine_length_cones1 = Input([2., 2.])
-    engine_length_cones2 = Input([1., 1.])
+    n_engines = Input(validator=lambda x: isinstance(x, int) and x % 2 == 0)
+    engine_spanwise_positions = Input(validator=val.all_is_number)
+    engine_overhangs = Input(validator=val.all_is_number)
+    engine_thrusts = Input(validator=val.all_is_number)
+    engine_diameters_inlet = Input([2., 2.], validator=val.all_is_number)
+    engine_diameters_outlet = Input([1., 1.], validator=val.all_is_number)
+    engine_diameters_part2 = Input([0.5, 0.5], validator=val.all_is_number)
+    engine_length_cones1 = Input([2., 2.], validator=val.all_is_number)
+    engine_length_cones2 = Input([1., 1.], validator=val.all_is_number)
 
     tolerance = 1e-7
 
@@ -137,7 +138,10 @@ class Wing(SewnShell):
                     'movable_hingeline_starts', 'movable_deflections',
                     'movables_symmetric',
                     'n_engines',
-                    'engine_spanwise_positions', 'engine_overhangs']
+                    'engine_spanwise_positions', 'engine_overhangs',
+                    'engine_thrusts', 'engine_diameters_inlet',
+                    'engine_diameters_outlet', 'engine_diameters_part2',
+                    'engine_length_cones1', 'engine_length_cones2']
 
     @Input
     def position(self):
@@ -234,7 +238,8 @@ class Wing(SewnShell):
     def fuel_tanks(self):
         return FuelTank(self, self.fuel_tank_boundaries[child.index],
                         self.fuel_tank_boundaries[child.index + 1],
-                        quantify=len(self.fuel_tank_boundaries) - 1)
+                        quantify=len(self.fuel_tank_boundaries) - 1
+                        if len(self.fuel_tank_boundaries) != 0 else 0)
 
     @Part
     def movables(self):
@@ -252,7 +257,13 @@ class Wing(SewnShell):
     @Part
     def engines(self):
         return Engine(position=self.engine_positions[child.index],
-                      quantify=self.n_engines)
+                      map_down=['engine_thrusts->thrust',
+                                'engine_diameters_inlet->diameter_inlet',
+                                'engine_diameters_outlet->diameter_outlet',
+                                'engine_diameters_part2->diameter_part2',
+                                'engine_length_cones1->length_cone1',
+                                'engine_length_cones2->length_cone2'],
+                      quantify=int(self.n_engines / 2))
 
     @Part(in_tree=False)
     def segments(self):
@@ -487,9 +498,7 @@ class Wing(SewnShell):
             is_root else self.parent.mac_position
         return avl.Configuration(name=self.name,
                                  surfaces=[self.avl_surface],
-                                 mach=0.8,
-                                 # velocity=200.,
-                                 # density=1.225,
+                                 mach=self.parent.mach,
                                  # TODO check whether reference area and
                                  #  chord are still correct for horizontal
                                  #  and vertical tails.

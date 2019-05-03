@@ -17,6 +17,7 @@ class Engine(FusedShell):
     diameter_part2 = Input(.5)
     length_cone1 = Input(2.)
     length_cone2 = Input(1.)
+    thrust = Input()
 
     # Optional arguments
     color = Input('cyan')

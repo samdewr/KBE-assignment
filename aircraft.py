@@ -8,9 +8,15 @@ import math
 import numpy as np
 from scipy import interpolate
 
+
 class Aircraft(GeomBase):
     """ This is the class representing the overall aircraft.
     """
+    # Cruise inputs
+    velocity = Input(validator=val.is_positive)
+    mach = Input(validator=val.is_positive)
+    air_density = Input(validator=val.is_positive)
+
     # Stability inputs
     stability_margin = Input(validator=val.is_positive)
 
@@ -88,14 +94,15 @@ class Aircraft(GeomBase):
     mw_movables_names = Input(validator=val.all_is_string)
 
     # Engines input
-    mw_n_engines = Input(validator=lambda x: isinstance(x, int))
-    mw_engine_spanwise_positions = Input()  # validator=val.all_is_number)
-    mw_engine_overhangs = Input()  # validator=val.all_is_number)
-    mw_engine_diameters_inlet = Input([2., 2.])  # validator=val.all_is_number)
-    mw_engine_diameters_outlet = Input([1., 1.])  # validator=val.)
-    mw_engine_diameters_part2 = Input([0.5, 0.5])
-    mw_engine_length_cones1 = Input([2., 2.])
-    mw_engine_length_cones2 = Input([1., 1.])
+    mw_n_engines = Input(validator=lambda x: isinstance(x, int) and x % 2 == 0)
+    mw_engine_spanwise_positions = Input(validator=val.all_is_number)
+    mw_engine_overhangs = Input(validator=val.all_is_number)
+    mw_engine_thrusts = Input(validator=val.all_is_number)
+    mw_engine_diameters_inlet = Input([2., 2.], validator=val.all_is_number)
+    mw_engine_diameters_outlet = Input([1., 1.], validator=val.all_is_number)
+    mw_engine_diameters_part2 = Input([.5, .5], validator=val.all_is_number)
+    mw_engine_length_cones1 = Input([2., 2.], validator=val.all_is_number)
+    mw_engine_length_cones2 = Input([1., 1.], validator=val.all_is_number)
 
     @Input
     def mw_semi_span(self):
@@ -118,7 +125,7 @@ class Aircraft(GeomBase):
         validator=lambda lst: all(0 < x < 1 or x is None for x in lst)
     )
 
-    ht_semi_span = Input(validator=val.is_positive)
+    ht_span = Input(validator=val.is_positive)
     ht_wing_cant = Input(validator=val.is_number)
 
     # Spar inputs
@@ -167,13 +174,18 @@ class Aircraft(GeomBase):
 
     # Engines input
     ht_n_engines = Input(0, validator=lambda x: isinstance(x, int))
-    ht_engine_spanwise_positions = Input()  # validator=val.all_is_number)
-    ht_engine_overhangs = Input()  # validator=val.all_is_number)
-    ht_engine_diameters_inlet = Input([2., 2.])  # validator=val.all_is_number)
-    ht_engine_diameters_outlet = Input([1., 1.])  # validator=val.)
-    ht_engine_diameters_part2 = Input([0.5, 0.5])
-    ht_engine_length_cones1 = Input([2., 2.])
-    ht_engine_length_cones2 = Input([1., 1.])
+    ht_engine_spanwise_positions = Input(validator=val.all_is_number)
+    ht_engine_overhangs = Input(validator=val.all_is_number)
+    ht_engine_thrusts = Input(validator=val.all_is_number)
+    ht_engine_diameters_inlet = Input([2., 2.], validator=val.all_is_number)
+    ht_engine_diameters_outlet = Input([1., 1.], validator=val.all_is_number)
+    ht_engine_diameters_part2 = Input([.5, .5], validator=val.all_is_number)
+    ht_engine_length_cones1 = Input([2., 2.], validator=val.all_is_number)
+    ht_engine_length_cones2 = Input([1., 1.], validator=val.all_is_number)
+
+    @Input
+    def ht_semi_span(self):
+        return self.ht_span / 2.
 
     # Vertical tail Inputs --------------------------------------------------
     vertical_tail_trans_pos = Input(validator=val.Range(0, 1))
@@ -240,13 +252,14 @@ class Aircraft(GeomBase):
 
     # Engines input
     vt_n_engines = Input(0, validator=lambda x: isinstance(x, int))
-    vt_engine_spanwise_positions = Input()  # validator=val.all_is_number)
-    vt_engine_overhangs = Input()  # validator=val.all_is_number)
-    vt_engine_diameters_inlet = Input([2., 2.])  # validator=val.all_is_number)
-    vt_engine_diameters_outlet = Input([1., 1.])  # validator=val.)
-    vt_engine_diameters_part2 = Input([0.5, 0.5])
-    vt_engine_length_cones1 = Input([2., 2.])
-    vt_engine_length_cones2 = Input([1., 1.])
+    vt_engine_spanwise_positions = Input(validator=val.all_is_number)
+    t_engine_overhangs = Input(validator=val.all_is_number)
+    vt_engine_thrusts = Input(validator=val.all_is_number)
+    vt_engine_diameters_inlet = Input([2., 2.], validator=val.all_is_number)
+    vt_engine_diameters_outlet = Input([1., 1.], validator=val.all_is_number)
+    vt_engine_diameters_part2 = Input([.5, .5], validator=val.all_is_number)
+    vt_engine_length_cones1 = Input([2., 2.], validator=val.all_is_number)
+    vt_engine_length_cones2 = Input([1., 1.], validator=val.all_is_number)
 
     __initargs__ = [
         # Fuselage inputs -----------------------------------------------------
@@ -293,7 +306,8 @@ class Aircraft(GeomBase):
         'mw_movables_symmetric',
         # Main wing engines inputs
         'mw_n_engines',
-        'mw_engine_spanwise_positions', 'mw_engine_overhangs'
+        'mw_engine_spanwise_positions', 'mw_engine_overhangs',
+        'mw_engine_thrusts',
         # Horizontal tail inputs ----------------------------------------------
         # Positioning
         'horizontal_tail_trans_pos', 'horizontal_tail_lat_pos',
@@ -334,6 +348,7 @@ class Aircraft(GeomBase):
         # Horizontal tail engines inputs
         'ht_n_engines',
         'ht_engine_spanwise_positions', 'ht_engine_overhangs',
+        'ht_engine_thrusts',
         # Vertical tail inputs ----------------------------------------------
         # Positioning
         'vertical_tail_trans_pos',
@@ -373,7 +388,8 @@ class Aircraft(GeomBase):
         'vt_movables_symmetric',
         # Vertical tail engines inputs
         'vt_n_engines',
-        'vt_engine_spanwise_positions', 'vt_engine_overhangs'
+        'vt_engine_spanwise_positions', 'vt_engine_overhangs',
+        'vt_engine_thrusts'
     ]
 
     # Optional inputs
@@ -458,7 +474,14 @@ class Aircraft(GeomBase):
                 # Engines inputs
                 'mw_n_engines->n_engines',
                 'mw_engine_spanwise_positions->engine_spanwise_positions',
-                'mw_engine_overhangs->engine_overhangs']
+                'mw_engine_overhangs->engine_overhangs',
+                'mw_engine_thrusts->engine_thrusts',
+                'mw_engine_diameters_inlet->engine_diameters_inlet',
+                'mw_engine_diameters_outlet->engine_diameters_outlet',
+                'mw_engine_diameters_part2->engine_diameters_part2',
+                'mw_engine_length_cones1->engine_length_cones1',
+                'mw_engine_length_cones2->engine_length_cones2'
+                ]
         )
 
     @Part
@@ -522,7 +545,13 @@ class Aircraft(GeomBase):
                 # Engines inputs
                 'mw_n_engines->n_engines',
                 'mw_engine_spanwise_positions->engine_spanwise_positions',
-                'mw_engine_overhangs->engine_overhangs'
+                'mw_engine_overhangs->engine_overhangs',
+                'mw_engine_thrusts->engine_thrusts',
+                'mw_engine_diameters_inlet->engine_diameters_inlet',
+                'mw_engine_diameters_outlet->engine_diameters_outlet',
+                'mw_engine_diameters_part2->engine_diameters_part2',
+                'mw_engine_length_cones1->engine_length_cones1',
+                'mw_engine_length_cones2->engine_length_cones2'
             ]
         )
 
@@ -585,7 +614,13 @@ class Aircraft(GeomBase):
                 # Engines inputs
                 'vt_n_engines->n_engines',
                 'vt_engine_spanwise_positions->engine_spanwise_positions',
-                'vt_engine_overhangs->engine_overhangs'
+                'vt_engine_overhangs->engine_overhangs',
+                'vt_engine_thrusts->engine_thrusts',
+                'vt_engine_diameters_inlet->engine_diameters_inlet',
+                'vt_engine_diameters_outlet->engine_diameters_outlet',
+                'vt_engine_diameters_part2->engine_diameters_part2',
+                'vt_engine_length_cones1->engine_length_cones1',
+                'vt_engine_length_cones2->engine_length_cones2'
             ]
         )
 
@@ -652,7 +687,13 @@ class Aircraft(GeomBase):
                 # Engines inputs
                 'ht_n_engines->n_engines',
                 'ht_engine_spanwise_positions->engine_spanwise_positions',
-                'ht_engine_overhangs->engine_overhangs'
+                'ht_engine_overhangs->engine_overhangs',
+                'ht_engine_thrusts->engine_thrusts',
+                'ht_engine_diameters_inlet->engine_diameters_inlet',
+                'ht_engine_diameters_outlet->engine_diameters_outlet',
+                'ht_engine_diameters_part2->engine_diameters_part2',
+                'ht_engine_length_cones1->engine_length_cones1',
+                'ht_engine_length_cones2->engine_length_cones2'
             ]
         )
 
@@ -720,7 +761,13 @@ class Aircraft(GeomBase):
                 # Engines inputs
                 'ht_n_engines->n_engines',
                 'ht_engine_spanwise_positions->engine_spanwise_positions',
-                'ht_engine_overhangs->engine_overhangs'
+                'ht_engine_overhangs->engine_overhangs',
+                'ht_engine_thrusts->engine_thrusts',
+                'ht_engine_diameters_inlet->engine_diameters_inlet',
+                'ht_engine_diameters_outlet->engine_diameters_outlet',
+                'ht_engine_diameters_part2->engine_diameters_part2',
+                'ht_engine_length_cones1->engine_length_cones1',
+                'ht_engine_length_cones2->engine_length_cones2'
             ]
         )
 
@@ -801,7 +848,7 @@ class Aircraft(GeomBase):
             surfaces=[self.main_wing_starboard.avl_surface,
                       self.horizontal_tail_starboard.avl_surface,
                       self.vertical_tail.avl_surface],
-            mach=0.8,
+            mach=self.mach,
             reference_area=self.wing_area,
             reference_chord=self.main_wing_starboard.mean_aerodynamic_chord,
             reference_span=self.mw_span,
@@ -819,7 +866,7 @@ class Aircraft(GeomBase):
         return avl.Configuration(
             name=self.name,
             surfaces=[self.main_wing_starboard.avl_surface],
-            mach=0.8,
+            mach=self.mach,
             reference_area=self.wing_area,
             reference_chord=self.main_wing_starboard.mean_aerodynamic_chord,
             reference_span=self.mw_span,
@@ -1066,12 +1113,12 @@ if __name__ == '__main__':
     obj = Aircraft(
         # Stability inputs
         stability_margin=0.05,
+        # Tail configuration inputs
+        tail_type='conventional',
         # Fuselage inputs -----------------------------------------------------
         fuselage_tail_angle=30., fuselage_tail_length=5.,
         fuselage_cockpit_length=3., fuselage_cabin_length=20.,
         fuselage_diameter=3., fuselage_nose_length=1.,
-        # Tail configuration inputs
-        tail_type='conventional',
         # Main wing inputs ----------------------------------------------------
         # Wing positioning
         main_wing_long_pos=0.4, main_wing_trans_pos=0.5, main_wing_lat_pos=0.5,
@@ -1124,9 +1171,10 @@ if __name__ == '__main__':
         mw_movables_symmetric=[True, False],
         mw_movables_names=['flap', 'aileron'],
         # Engines inputs
-        mw_n_engines=2,
+        mw_n_engines=4,
         mw_engine_spanwise_positions=[0.15, 0.5],
         mw_engine_overhangs=[0.4, 0.3],
+        mw_engine_thrusts=[120000, 120000],
         # Horizontal tail inputs ----------------------------------------------
         # Wing positioning
         horizontal_tail_trans_pos=0.4, horizontal_tail_lat_pos=0.5,
@@ -1135,7 +1183,7 @@ if __name__ == '__main__':
         ht_airfoil_names=['NACA0018', 'NACA0012'],
         ht_chords=[3., 1.5], ht_twists=[0., 0.],
         ht_sweeps_le=[35.], ht_dihedral_angles=[1.],
-        ht_spanwise_positions=[], ht_semi_span=3.5, ht_wing_cant=0.,
+        ht_spanwise_positions=[], ht_span=7., ht_wing_cant=0.,
         # Spars inputs
         ht_n_spars=2,
         ht_spar_chordwise_positions=[[0.2, 0.2], [0.8, 0.8]],
@@ -1182,7 +1230,7 @@ if __name__ == '__main__':
         vt_n_wing_segments=1,
         vt_airfoil_names=['NACA0018', 'NACA0012'],
         vt_chords=[3., 1.5], vt_twists=[0., 0.],
-        vt_sweeps_le=[35.], vt_dihedral_angles=[1.],
+        vt_sweeps_le=[35.], vt_dihedral_angles=[0.],
         vt_spanwise_positions=[], vt_semi_span=3.5, vt_wing_cant=0.,
         # Spars inputs
         vt_n_spars=2,

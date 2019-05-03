@@ -52,7 +52,7 @@ class Airfoil(FittedCurve):
         join(dirname(dirname(__file__)), 'input', 'constants.xlsx'),
         sheet_name='aero', index_col=0
     )
-
+    # TODO: check whether to have MACH defined in only one place.
     REYNOLDS = CONSTANTS.loc['reynolds']['value']
     REYNOLDS_UNITS = CONSTANTS.loc['reynolds']['units']
     MACH = CONSTANTS.loc['mach']['value']
