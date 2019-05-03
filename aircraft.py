@@ -248,7 +248,6 @@ class Aircraft(GeomBase):
     vt_engine_length_cones1 = Input([2., 2.])
     vt_engine_length_cones2 = Input([1., 1.])
 
-
     __initargs__ = [
         # Fuselage inputs -----------------------------------------------------
         'fuselage_diameter', 'fuselage_tail_angle', 'fuselage_tail_length',
@@ -748,7 +747,7 @@ class Aircraft(GeomBase):
             l_h=self.l_h,
             z_h=self.z_h,
             x_ac=self.x_ac_wing_fus,
-            CL_alpha_a_h=self.cl_alpha_a_h,
+            CL_alpha_a_h=self.Cl_alpha_a_h,
             tail_type=self.tail_type,
             forward_cg=self.forward_cg,
             aft_cg=self.aft_cg
@@ -881,13 +880,13 @@ class Aircraft(GeomBase):
         x_ac_engines = sum(-4.0 * width_nacelle[idx] ** 2
                            * self.distance_nacelle_mac[idx] /
                            (self.wing_area * wing.mean_aerodynamic_chord *
-                            self.cl_alpha_a_h)
+                            self.Cl_alpha_a_h)
                            for idx in range(self.mw_n_engines / 2))
         x_ac_wing = 0.25
         l_nose_le = self.net_root_le_point.x - self.position.x
         mac = self.main_wing_starboard.mean_aerodynamic_chord
-        x_ac_rest_1 = -1.8 / self.cl_alpha_a_h * self.fuselage_diameter ** 2 \
-            * l_nose_le / (self.wing_area * mac)
+        x_ac_rest_1 = -1.8 / self.Cl_alpha_a_h * self.fuselage_diameter ** 2 \
+                      * l_nose_le / (self.wing_area * mac)
         x_ac_rest_2 = 0.273 / (1 + wing.taper_ratio) * (
                 self.wing_area / self.mw_span) * self.fuselage_diameter * (
                               self.mw_span - self.fuselage_diameter) / \
@@ -897,20 +896,19 @@ class Aircraft(GeomBase):
         return x_ac_wing + x_ac_rest_1 + x_ac_rest_2 + x_ac_engines
 
     @Attribute
-    def cl_alpha_a_h(self):
+    def Cl_alpha_a_h(self):
         """ Calculates the Lift curve coefficient of the fuselage wing body.
         This is the aircraft with fuselage and wing without horizontal
         tailplane.
         :rtype: float
         """
-        cl_alpha_wing = self.main_wing_starboard.sections[0].CL_alpha
+        cl_alpha_wing = math.degrees(self.main_wing_starboard.CL_alpha)
         # TODO: CL_alpha a_h (main wings + fuselage uit AVL halen.
-        gradient_deg = cl_alpha_wing * (
+        gradient_rad = cl_alpha_wing * (
                 1 + 2.15 * self.fuselage_diameter / self.mw_span) \
                 * self.net_wing_area / self.wing_area + math.pi / 2. * \
                 self.fuselage_diameter ** 2 \
                 / self.wing_area
-        gradient_rad = math.degrees(gradient_deg)
         return gradient_rad
 
     @Attribute

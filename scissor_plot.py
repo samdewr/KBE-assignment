@@ -35,14 +35,12 @@ class ScissorPlot(Base):
     CL_alpha_horizontal = Input(validator=val.is_positive)  # Lift curve of
     # the tail
     mac = Input(validator=val.is_positive)  # Mean aerodynamic chord
-    taper_ratio = Input(validator=val.is_positive)  # Taper ratio of the main wing.
     stability_margin = Input()
 
     # Other Inputs
     fuselage_length = Input(validator=val.is_positive)  # Length of the fuselage
     fuselage_diameter = Input(validator=val.is_positive)  # needed for stabiliser
 
-    l_nose_LE = Input(validator=val.is_positive)  # Distance between nose and the leading edge of the
     # wing
     tail_type = Input(validator=val.is_string)  # Input depending
     # of what tail configuration is used.
@@ -127,7 +125,7 @@ class ScissorPlot(Base):
 
                 :rtype: float
                 """
-        return -1
+        return -0.8
 
     @Attribute
     def controllability_values(self):
