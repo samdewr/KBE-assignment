@@ -82,6 +82,7 @@ class Fuselage(FusedShell):
                         position=rotate(
                             self.cabin.profiles[-1].position,
                             'y',radians(-90.)))
+
     @Attribute
     def shape_in(self):
         return self.nose
