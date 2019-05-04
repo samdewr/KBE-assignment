@@ -1,12 +1,12 @@
+import math
 from math import tan, radians, degrees
 
 import kbeutils.avl as avl
 from parapy.core import *
 from parapy.geom import *
-import math
 
-from wing_primitives.airfoil import Airfoil
-from wing_primitives.structural_elements.spar import SparSegment
+from aircraft.wing_primitives.external.airfoil import Airfoil
+from aircraft.wing_primitives.structural_elements.spar import SparSegment
 
 
 class LiftingSurface(LoftedSurface):
@@ -294,7 +294,7 @@ class LiftingSurface(LoftedSurface):
 
 if __name__ == '__main__':
     from parapy.gui import display
-    from wing_primitives.external.connecting_element import ConnectingElement
+    from aircraft.wing_primitives.external.connecting_element import ConnectingElement
 
     forward_wing = LiftingSurface(
         'NACA23012', 4., 1., 'whitcomb', 2., 4., 6., 35., 6.,

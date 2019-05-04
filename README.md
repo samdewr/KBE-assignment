@@ -10,13 +10,23 @@ that is used as an engine fuel supplier during the next time interval in
 such a way, that the c.g. range of the aircraft is minimised. As a result 
 hereof, the trim drag is minimised. 
 
-![Box-wing aircraft](https://www.aviationcv.com/aviation-blog/wp-content/uploads/2015/06/composite_1a_original_full_0.jpg)
+Moreover, an integral main wing placement and horizontal tail sizing 
+algorithm is included in the app. That is, given certain main wing and 
+horizontal tail parameters, the app places the main wing in the longitudinal
+position that renders the smallest horizontal tail surface. Subsequently, 
+the horizontal tail surface is adjusted in such a way, that it meets the 
+tail surface requirement.
+
+![Box-wing aircraft](https://lessonslearned.faa.gov/AirTransat236/Fuel_tanks.jpg)
 
 ## Usage 
-The KBE app can be run by specifying an aircraft geometry in the 
+The KBE app can be run by:
+ 1. Specifying an aircraft geometry in the`input/aircraft_config.xlsx` Excel
+ file. Each variable is described extensively here.
+ 1. Run the `main` object 
 **TODO FINISH THIS PART**.
 
-## Program structure
+## Program elements
 ### Airfoils
 Airfoils can be specified in the `airfoils` folder. Accepted inputs are `.dat`
 files, where the airfoil coordinates are:
@@ -85,3 +95,76 @@ represent either a flap, rudder, aileron, etc. due to its simplicity.
 * matplotlib 2.2.2
 * pandas 0.24.2
  
+## Project structure
+```
+│   .gitattributes
+│   .gitignore
+│   README.md
+│
+├───.idea
+│   │   assignment.iml
+│   │   encodings.xml
+│   │   misc.xml
+│   │   modules.xml
+│   │   vcs.xml
+│   │   workspace.xml
+│   │
+│   ├───dictionaries
+│   │       TUDelft_SID.xml
+│   │
+│   └───inspectionProfiles
+│           Project_Default.xml
+│
+├───aircraft
+│   │   aircraft.py
+│   │
+│   ├───analysis
+│   │       scissor_plot.py
+│   │       __init__.py
+│   │
+│   ├───engines
+│   │       engine.py
+│   │       __init__.py
+│   │
+│   ├───fuselage_primitives
+│   │       cabin.py
+│   │       fuselage.py
+│   │       nose.py
+│   │       tail.py
+│   │
+│   └───wing_primitives
+│       │
+│       ├───external
+│       │       airfoil.py
+│       │       connecting_element.py
+│       │       lifting_surface.py
+│       │       movable.py
+│       │       wing.py
+│       │       __init__.py
+│       │
+│       ├───fuel
+│       │       fuel.py
+│       │       fuel_tank.py
+│       │
+│       └───structural_elements
+│               rib.py
+│               rib_backup.py
+│               spar.py
+│               __init__.py
+│
+├───airfoils
+│       whitcomb.dat
+│
+├───docs
+│       ...
+│   
+├───input
+│       aircraft_config.xlsx
+│       constants.xlsx
+│
+├───output
+│       ... 
+│
+└───tools
+        naca.py
+```

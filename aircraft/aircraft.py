@@ -1,9 +1,11 @@
 from parapy.core import *
 from parapy.geom import *
+from parapy.exchange.step import STEPWriter
 from fuselage_primitives.fuselage import Fuselage
-from scissor_plot import ScissorPlot
+from analysis.scissor_plot import ScissorPlot
 from wing_primitives.external.wing import Wing
 import kbeutils.avl as avl
+import os
 import math
 import numpy as np
 from scipy import interpolate
@@ -12,6 +14,7 @@ from scipy import interpolate
 class Aircraft(GeomBase):
     """ This is the class representing the overall aircraft.
     """
+
     # Cruise inputs
     velocity = Input(validator=val.is_positive)
     mach = Input(validator=val.is_positive)
@@ -770,6 +773,13 @@ class Aircraft(GeomBase):
                 'ht_engine_length_cones2->engine_length_cones2'
             ]
         )
+
+    @Part
+    def STEPWriter(self):
+        return STEPWriter(
+            trees=[self],
+            default_directory=os.path.join(os.path.dirname(os.path.dirname(
+                __file__)), 'output', 'file.stp'))
 
     @Part
     def scissor_plot(self):

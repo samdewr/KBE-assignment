@@ -4,16 +4,16 @@ import kbeutils.avl as avl
 import numpy as np
 from parapy.core import *
 from parapy.geom import *
-import logging
-from engine import Engine
-from wing_primitives.airfoil import IntersectedAirfoil
-from wing_primitives.external.lifting_surface import LiftingSurface
-from wing_primitives.fuel_tank import FuelTank
-from wing_primitives.movable import Movable
-from wing_primitives.structural_elements.rib import (WingBoxRib,
-                                                     TrailingEdgeRiblet,
-                                                     LeadingEdgeRiblet)
-from wing_primitives.structural_elements.spar import FusedSpar
+
+from aircraft.engines.engine import Engine
+from aircraft.wing_primitives.external.airfoil import IntersectedAirfoil
+from aircraft.wing_primitives.external.lifting_surface import LiftingSurface
+from aircraft.wing_primitives.external.movable import Movable
+from aircraft.wing_primitives.fuel.fuel_tank import FuelTank
+from aircraft.wing_primitives.structural_elements.rib import (
+    WingBoxRib, TrailingEdgeRiblet, LeadingEdgeRiblet
+)
+from aircraft.wing_primitives.structural_elements.spar import FusedSpar
 
 
 class Wing(SewnShell):

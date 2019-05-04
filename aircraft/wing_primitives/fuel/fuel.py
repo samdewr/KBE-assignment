@@ -9,7 +9,8 @@ class Fuel(SubtractedSolid):
 
     # Class constants
     CONSTANTS = pd.read_excel(
-        join(dirname(dirname(__file__)), 'input', 'constants.xlsx'),
+        join(dirname(dirname(dirname(dirname(__file__)))),
+             'input', 'constants.xlsx'),
         sheet_name='fuel', index_col=0
     )
 

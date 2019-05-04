@@ -1,12 +1,10 @@
-import kbeutils.avl as avl
-
 from parapy.core import *
 from parapy.geom import *
 import math
 
-from fuselage_primitives.cabin import Cabin
-from fuselage_primitives.nose import NoseCone
-from fuselage_primitives.tail import TailCone
+from aircraft.fuselage_primitives.cabin import Cabin
+from aircraft.fuselage_primitives.nose import NoseCone
+from aircraft.fuselage_primitives.tail import TailCone
 
 
 class Fuselage(SewnShell):
