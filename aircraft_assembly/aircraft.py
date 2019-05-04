@@ -1,9 +1,9 @@
 from parapy.core import *
 from parapy.geom import *
 from parapy.exchange.step import STEPWriter
-from fuselage_primitives.fuselage import Fuselage
-from analysis.scissor_plot import ScissorPlot
-from wing_primitives.external.wing import Wing
+from aircraft_assembly.wing_primitives.external.wing import Wing
+from aircraft_assembly.fuselage_primitives.fuselage import Fuselage
+from aircraft_assembly.analysis.scissor_plot import ScissorPlot
 import kbeutils.avl as avl
 import os
 import math
@@ -778,8 +778,8 @@ class Aircraft(GeomBase):
     def STEPWriter(self):
         return STEPWriter(
             trees=[self],
-            default_directory=os.path.join(os.path.dirname(os.path.dirname(
-                __file__)), 'output', 'file.stp'))
+            default_directory=os.path.join(os.getcwd(), 'output', 'file.stp')
+        )
 
     @Part
     def scissor_plot(self):

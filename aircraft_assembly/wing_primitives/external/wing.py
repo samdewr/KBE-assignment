@@ -5,15 +5,18 @@ import numpy as np
 from parapy.core import *
 from parapy.geom import *
 
-from aircraft.engines.engine import Engine
-from aircraft.wing_primitives.external.airfoil import IntersectedAirfoil
-from aircraft.wing_primitives.external.lifting_surface import LiftingSurface
-from aircraft.wing_primitives.external.movable import Movable
-from aircraft.wing_primitives.fuel.fuel_tank import FuelTank
-from aircraft.wing_primitives.structural_elements.rib import (
+from aircraft_assembly.engines.engine import Engine
+from aircraft_assembly.wing_primitives.external.airfoil import \
+    IntersectedAirfoil
+from aircraft_assembly.wing_primitives.external.lifting_surface import \
+    LiftingSurface
+from aircraft_assembly.wing_primitives.external.movable import Movable
+from aircraft_assembly.wing_primitives.fuel.fuel_tank import FuelTank
+from aircraft_assembly.wing_primitives.structural_elements.rib import (
     WingBoxRib, TrailingEdgeRiblet, LeadingEdgeRiblet
 )
-from aircraft.wing_primitives.structural_elements.spar import FusedSpar
+from aircraft_assembly.wing_primitives.structural_elements.spar import \
+    FusedSpar
 
 
 class Wing(SewnShell):

@@ -2,9 +2,9 @@ from parapy.core import *
 from parapy.geom import *
 import math
 
-from aircraft.fuselage_primitives.cabin import Cabin
-from aircraft.fuselage_primitives.nose import NoseCone
-from aircraft.fuselage_primitives.tail import TailCone
+from aircraft_assembly.fuselage_primitives.cabin import Cabin
+from aircraft_assembly.fuselage_primitives.nose import NoseCone
+from aircraft_assembly.fuselage_primitives.tail import TailCone
 
 
 class Fuselage(SewnShell):
