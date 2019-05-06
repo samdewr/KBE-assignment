@@ -1,9 +1,9 @@
 from parapy.core import *
 from parapy.geom import *
 from parapy.exchange.step import STEPWriter
-from aircraft_assembly.wing_primitives.external.wing import Wing
-from aircraft_assembly.fuselage_primitives.fuselage import Fuselage
-from aircraft_assembly.analysis.scissor_plot import ScissorPlot
+from classes.wing_primitives.external.wing import Wing
+from classes.fuselage_primitives.fuselage import Fuselage
+from classes.analysis.scissor_plot import ScissorPlot
 import kbeutils.avl as avl
 import os
 import math
@@ -405,6 +405,7 @@ class Aircraft(GeomBase):
     avl_delta_e_start = Input(-30.)
     avl_delta_e_end = Input(31.)
     avl_delta_e_step = Input(30.)
+    convergence_tol = Input(1e-4)
 
     @Part
     def fuselage(self):
@@ -635,18 +636,19 @@ class Aircraft(GeomBase):
                 1.,
                 self.horizontal_tail_trans_pos,
                 self.horizontal_tail_lat_pos),
-                'x_', self.ht_chords[0])
+                'x_', self.ht_chords[0] * self.ht_scale_factor)
             if self.tail_type == 'conventional' else
             self.vertical_tail.sections[-1].position.location,
+            chords=[self.ht_scale_factor * chord for chord in self.ht_chords],
+            semi_span=self.ht_scale_factor * self.ht_semi_span,
             map_down=[
                 # Wing segments inputs
                 'ht_n_wing_segments->n_wing_segments',
-                'ht_airfoil_names->airfoil_names',
-                'ht_chords->chords', 'ht_twists->twists',
+                'ht_airfoil_names->airfoil_names', 'ht_twists->twists',
                 'ht_sweeps_le->sweeps_le',
                 'ht_dihedral_angles->dihedral_angles',
                 'ht_spanwise_positions->spanwise_positions',
-                'ht_semi_span->semi_span', 'ht_wing_cant->wing_cant',
+                'ht_wing_cant->wing_cant',
                 # Spars inputs
                 'ht_n_spars->n_spars',
                 'ht_spar_chordwise_positions->spar_chordwise_positions',
@@ -709,18 +711,19 @@ class Aircraft(GeomBase):
                 1.,
                 self.horizontal_tail_trans_pos,
                 -self.horizontal_tail_lat_pos),
-                'x_', self.ht_chords[0])
+                'x_', self.ht_chords[0] * self.ht_scale_factor)
             if self.tail_type == 'conventional' else
             self.vertical_tail.sections[-1].position.location,
+            chords=[self.ht_scale_factor * chord for chord in self.ht_chords],
+            semi_span=self.ht_scale_factor * self.ht_semi_span,
             map_down=[
                 # Wing segments inputs
                 'ht_n_wing_segments->n_wing_segments',
-                'ht_airfoil_names->airfoil_names',
-                'ht_chords->chords', 'ht_twists->twists',
+                'ht_airfoil_names->airfoil_names', 'ht_twists->twists',
                 'ht_sweeps_le->sweeps_le',
                 'ht_dihedral_angles->dihedral_angles',
                 'ht_spanwise_positions->spanwise_positions',
-                'ht_semi_span->semi_span', 'ht_wing_cant->wing_cant',
+                'ht_wing_cant->wing_cant',
                 # Spars inputs
                 'ht_n_spars->n_spars',
                 'ht_spar_chordwise_positions->spar_chordwise_positions',
@@ -776,10 +779,10 @@ class Aircraft(GeomBase):
 
     @Part
     def STEPWriter(self):
-        return STEPWriter(
-            trees=[self],
-            default_directory=os.path.join(os.getcwd(), 'output', 'file.stp')
-        )
+        return STEPWriter(trees=[self],
+                          default_directory=os.path.join(os.getcwd(),
+                                                         'output',
+                                                         'file.stp'))
 
     @Part
     def scissor_plot(self):
@@ -986,6 +989,120 @@ class Aircraft(GeomBase):
                self.main_wing_starboard.position.z
 
     @Attribute
+    def ht_scale_factor(self):
+        scale_factor_total = 1.
+        scale_factor_old = 1000.
+        scale_factor = 1.
+        chords = [chord * scale_factor for chord in self.ht_chords]
+        semi_span = self.ht_semi_span * scale_factor
+
+        while abs((scale_factor - scale_factor_old) / scale_factor_old) > \
+                self.convergence_tol:
+            chords = [chord * scale_factor for chord in chords]
+            semi_span = scale_factor * semi_span
+            horizontal_tail = Wing(
+                name='unscaled_horizontal_tail',
+                location=translate(self.fuselage.point_at_fractions(
+                    1.,
+                    self.horizontal_tail_trans_pos,
+                    self.horizontal_tail_lat_pos),
+                    'x_', self.ht_chords[0])
+                if self.tail_type == 'conventional' else
+                self.vertical_tail.sections[-1].position.location,
+                # Wing segments inputs
+                n_wing_segments=self.ht_n_wing_segments,
+                airfoil_names=self.ht_airfoil_names,
+                chords=chords,
+                twists=self.ht_twists,
+                sweeps_le=self.ht_sweeps_le,
+                dihedral_angles=self.ht_dihedral_angles,
+                spanwise_positions=self.ht_spanwise_positions,
+                semi_span=semi_span,
+                wing_cant=self.ht_wing_cant,
+                # Spars inputs
+                n_spars=self.ht_n_spars,
+                spar_chordwise_positions=self.ht_spar_chordwise_positions,
+                spar_aspect_ratios=self.ht_spar_aspect_ratios,
+                spar_profiles=self.ht_spar_profiles,
+                spar_spanwise_positions_end=self.ht_spar_spanwise_positions_end,
+                # Wing box ribs inputs
+                n_ribs_wb=self.ht_n_ribs_wb,
+                ribs_wb_spanwise_reference_spars_idx=
+                self.ht_ribs_wb_spanwise_reference_spars_idx,
+                ribs_wb_spanwise_positions=self.ht_ribs_wb_spanwise_positions,
+                ribs_wb_orientation_reference_spars=
+                self.ht_ribs_wb_orientation_reference_spars,
+                ribs_wb_orientation_angles=self.ht_ribs_wb_orientation_angles,
+                # Trailing edge riblets inputs
+                n_ribs_te=self.ht_n_ribs_te,
+                ribs_te_spanwise_reference_spars_idx=
+                self.ht_ribs_te_spanwise_reference_spars_idx,
+                ribs_te_spanwise_positions=self.ht_ribs_te_spanwise_positions,
+                ribs_te_orientation_reference_spars=
+                self.ht_ribs_te_orientation_reference_spars,
+                ribs_te_orientation_angles=self.ht_ribs_te_orientation_angles,
+                # Leading edge riblets inputs
+                n_ribs_le=self.ht_n_ribs_le,
+                ribs_le_spanwise_reference_spars_idx=
+                self.ht_ribs_le_spanwise_reference_spars_idx,
+                ribs_le_spanwise_positions=self.ht_ribs_le_spanwise_positions,
+                ribs_le_orientation_reference_spars=
+                self.ht_ribs_le_orientation_reference_spars,
+                ribs_le_orientation_angles=self.ht_ribs_le_orientation_angles,
+                # Fuel tank inputs
+                fuel_tank_boundaries=self.ht_fuel_tank_boundaries,
+                # Movables inputs
+                n_movables=self.ht_n_movables,
+                movable_spanwise_starts=self.ht_movable_spanwise_starts,
+                movable_spanwise_ends=self.ht_movable_spanwise_ends,
+                movable_hingeline_starts=self.ht_movable_hingeline_starts,
+                movable_deflections=self.ht_movable_deflections,
+                movables_symmetric=self.ht_movables_symmetric,
+                movables_names=self.ht_movables_names,
+                # Engines inputs
+                n_engines=self.ht_n_engines
+            )
+            scissor_plot = ScissorPlot(
+                CL_0=self.main_wing_starboard.CL_0,
+                Cm_0=self.main_wing_starboard.Cm_0,
+                CL_alpha_wing=math.degrees(self.main_wing_starboard.CL_alpha),
+                CL_alpha_horizontal=math.degrees(horizontal_tail.CL_alpha),
+                sweep_angle_025c=math.radians(self.main_wing_starboard
+                                              .sweep_c_over_4),
+                fuselage_diameter=self.fuselage.diameter,
+                fuselage_length=self.fuselage.length,
+                mac=self.main_wing_starboard.mean_aerodynamic_chord,
+                span=self.mw_span,
+                aspect_ratio=self.aspect_ratio,
+                stability_margin=self.stability_margin,
+                wing_area=self.wing_area,
+                net_wing_area=self.net_wing_area,
+                l_h=horizontal_tail.mac_position.x - (
+                        self.main_wing_starboard.x_lemac + self.x_ac_wing_fus *
+                        self.main_wing_starboard.mean_aerodynamic_chord
+                ),
+                z_h=horizontal_tail.mac_position.z -
+                    self.main_wing_starboard.mac_position.z,
+                x_ac=self.x_ac_wing_fus,
+                CL_alpha_a_h=self.Cl_alpha_a_h,
+                tail_type=self.tail_type,
+                forward_cg=self.forward_cg, # TODO Parametrise this c.g.
+                aft_cg=self.aft_cg  # TODO Parametrise this c.g.
+            )
+            scale_factor_old = scale_factor
+            scale_factor = (scissor_plot.tail_area / 2. /
+                            horizontal_tail.reference_area) ** 0.5
+            scale_factor_total *= scale_factor
+            print 'ht ref area: {}'.format(horizontal_tail.reference_area)
+            print 'scissor plot ht area: {}'.format(scissor_plot.tail_area / 2.)
+            print 'scale_factor_old: {}'.format(scale_factor_old)
+            print 'scale_factor: {}'.format(scale_factor)
+            print 'scale_factor_diff: {}'.format(
+                (scale_factor - scale_factor_old) / scale_factor_old)
+            print '_________________________________________________________'
+        return scale_factor_total
+
+    @Attribute
     def forward_cg(self):
         # TODO Hier nog even de uitgerekende forward and aft c.g's invullen
         return 0.12
@@ -1121,6 +1238,10 @@ if __name__ == '__main__':
     from parapy.gui import display
 
     obj = Aircraft(
+        # Cruise flight parameters
+        velocity=225.,
+        mach=0.8,
+        air_density=0.35,
         # Stability inputs
         stability_margin=0.05,
         # Tail configuration inputs

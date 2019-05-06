@@ -19,7 +19,7 @@ class TailCone(LoftedSurface):
         tail.
                 :rtype: float
                 """
-        return np.arange(1., 0.05, -0.01)
+        return np.arange(1., 0.05, -0.05)
 
     @Attribute
     # The distance between each circle is predefined by this attribute.
@@ -42,13 +42,13 @@ class TailCone(LoftedSurface):
             quantify=len(self.tail_scaling_list),
             position=rotate90(
                 translate(self.position,
-                          'x',child.index * self.section_length,
-                          'y', self.fuselage_diameter* self.height_ratio *
-                                (self.tail_scaling_list[0] -
-                                self.tail_scaling_list[child.index])),
-                    'y'),
-            radius=self.tail_scaling_list[child.index]
-                   * self.fuselage_diameter / 2.)
+                          'x', child.index * self.section_length,
+                          'y', self.fuselage_diameter * self.height_ratio *
+                          (self.tail_scaling_list[0] -
+                           self.tail_scaling_list[child.index])),
+                'y'),
+            radius=self.tail_scaling_list[child.index] *
+                   self.fuselage_diameter / 2.)
 
     @Attribute
     def profiles(self):

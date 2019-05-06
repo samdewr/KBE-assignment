@@ -2,15 +2,15 @@ from parapy.core import *
 from parapy.geom import *
 import math
 
-from aircraft_assembly.fuselage_primitives.cabin import Cabin
-from aircraft_assembly.fuselage_primitives.nose import NoseCone
-from aircraft_assembly.fuselage_primitives.tail import TailCone
+from classes.fuselage_primitives.cabin import Cabin
+from classes.fuselage_primitives.nose import NoseCone
+from classes.fuselage_primitives.tail import TailCone
 
 
 class Fuselage(SewnShell):
 
     """" This program gives the entire fuselage of the system, it uses 3
-    seperate classes: cabin, tail and nose. These represent what the name
+    separate classes: cabin, tail and nose. These represent what the name
     suggests. The input is mainly based on the lengths of each section
     It combines the 3 parts and attaches them together. """
 
@@ -80,6 +80,7 @@ class Fuselage(SewnShell):
                         position=rotate(
                             self.cabin.profiles[-1].position,
                             'y', math.radians(-90.)))
+
     @Attribute
     def shape_in(self):
         return self.nose

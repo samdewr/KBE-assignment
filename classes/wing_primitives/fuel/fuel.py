@@ -2,6 +2,7 @@ from os.path import dirname, join
 
 import pandas as pd
 from parapy.core import *
+from parapy.core.globs import Undefined
 from parapy.geom import *
 
 
@@ -111,6 +112,13 @@ class Fuel(SubtractedSolid):
         :type time_step: float
         :rtype: None
         """
-        # TODO replace 1. with the thrust of the engine(s) this fuel tank
-        #  delivers to.
-        self.mass -= self.SPECIFIC_FUEL_CONSUMPTION * time_step * 1.
+        wing = self.parent.parent
+
+        if wing.engines is Undefined:
+            aircraft = wing.parent
+            engines = aircraft.main_wing_starboard.engines
+        else:
+            engines = wing.engines
+
+        thrust_tot = sum(engine.thrust for engine in engines)
+        self.mass -= self.SPECIFIC_FUEL_CONSUMPTION * time_step * thrust_tot

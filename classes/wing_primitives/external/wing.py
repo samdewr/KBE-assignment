@@ -5,17 +5,17 @@ import numpy as np
 from parapy.core import *
 from parapy.geom import *
 
-from aircraft_assembly.engines.engine import Engine
-from aircraft_assembly.wing_primitives.external.airfoil import \
+from classes.engines.engine import Engine
+from classes.wing_primitives.external.airfoil import \
     IntersectedAirfoil
-from aircraft_assembly.wing_primitives.external.lifting_surface import \
+from classes.wing_primitives.external.lifting_surface import \
     LiftingSurface
-from aircraft_assembly.wing_primitives.external.movable import Movable
-from aircraft_assembly.wing_primitives.fuel.fuel_tank import FuelTank
-from aircraft_assembly.wing_primitives.structural_elements.rib import (
+from classes.wing_primitives.external.movable import Movable
+from classes.wing_primitives.fuel.fuel_tank import FuelTank
+from classes.wing_primitives.structural_elements.rib import (
     WingBoxRib, TrailingEdgeRiblet, LeadingEdgeRiblet
 )
-from aircraft_assembly.wing_primitives.structural_elements.spar import \
+from classes.wing_primitives.structural_elements.spar import \
     FusedSpar
 
 
@@ -255,7 +255,8 @@ class Wing(SewnShell):
                                  'movable_deflections->deflection',
                                  'movables_symmetric->symmetric',
                                  'movables_names->name'],
-                       quantify=self.n_movables)
+                       quantify=self.n_movables,
+                       suppress=self.n_movables == 0)
 
     @Part
     def engines(self):
@@ -266,7 +267,8 @@ class Wing(SewnShell):
                                 'engine_diameters_part2->diameter_part2',
                                 'engine_length_cones1->length_cone1',
                                 'engine_length_cones2->length_cone2'],
-                      quantify=int(self.n_engines / 2))
+                      quantify=int(self.n_engines / 2),
+                      suppress=self.n_engines == 0)
 
     @Part(in_tree=False)
     def segments(self):
@@ -499,13 +501,12 @@ class Wing(SewnShell):
         span = self.semi_span * 2 if is_root else self.parent.mw_span
         ref_point = Point(self.mac_position.x, 0., self.mac_position.y) if \
             is_root else self.parent.mac_position
+        mach = 0.8 if is_root else self.parent.mach
+
         return avl.Configuration(name=self.name,
                                  surfaces=[self.avl_surface],
-                                 mach=self.parent.mach,
-                                 # TODO check whether reference area and
-                                 #  chord are still correct for horizontal
-                                 #  and vertical tails.
-                                 reference_area=self.reference_area * 2.,
+                                 mach=mach,
+                                 reference_area=self.reference_area * 2,
                                  reference_chord=mac,
                                  reference_span=span,
                                  reference_point=ref_point)

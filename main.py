@@ -4,7 +4,7 @@ import time
 import matplotlib.pyplot as plt
 import numpy as np
 
-from aircraft.aircraft import Aircraft
+from classes.aircraft import Aircraft
 from tools.read import import_aircraft_data
 
 

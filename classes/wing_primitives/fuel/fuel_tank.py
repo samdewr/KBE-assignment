@@ -1,7 +1,7 @@
 from parapy.core import *
 from parapy.geom import *
 
-from aircraft_assembly.wing_primitives.fuel.fuel import Fuel
+from classes.wing_primitives.fuel.fuel import Fuel
 
 
 class FuelTank(SewnShell):

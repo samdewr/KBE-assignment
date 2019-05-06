@@ -5,8 +5,8 @@ import kbeutils.avl as avl
 from parapy.core import *
 from parapy.geom import *
 
-from aircraft_assembly.wing_primitives.external.airfoil import Airfoil
-from aircraft_assembly.wing_primitives.structural_elements.spar import \
+from classes.wing_primitives.external.airfoil import Airfoil
+from classes.wing_primitives.structural_elements.spar import \
     SparSegment
 
 
@@ -295,7 +295,7 @@ class LiftingSurface(LoftedSurface):
 
 if __name__ == '__main__':
     from parapy.gui import display
-    from aircraft_assembly.wing_primitives.external.connecting_element import \
+    from classes.wing_primitives.external.connecting_element import \
         ConnectingElement
 
     forward_wing = LiftingSurface(
