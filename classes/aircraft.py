@@ -14,11 +14,17 @@ from scipy import interpolate
 class Aircraft(GeomBase):
     """ This is the class representing the overall aircraft.
     """
+    # Aircraft weights
+    ZFM = Input(validator=val.is_positive)
+    fuel_fraction = Input(validator=val.Range(0, 1))
 
     # Cruise inputs
     velocity = Input(validator=val.is_positive)
     mach = Input(validator=val.is_positive)
+    reynolds = Input(validator=val.is_positive)
     air_density = Input(validator=val.is_positive)
+    ult_load_factor = Input(validator=val.is_positive)
+    g0 = Input(validator=val.is_positive)
 
     # Stability inputs
     stability_margin = Input(validator=val.is_positive)
@@ -67,19 +73,22 @@ class Aircraft(GeomBase):
 
     # Rib inputs
     mw_n_ribs_wb = Input(validator=lambda x: isinstance(x, int))
-    mw_ribs_wb_spanwise_reference_spars_idx = Input(validator=val.all_is_number)
+    mw_ribs_wb_spanwise_reference_spars_idx = Input(
+        validator=val.all_is_number)
     mw_ribs_wb_spanwise_positions = Input(validator=val.all_is_number)
     mw_ribs_wb_orientation_reference_spars = Input(validator=val.all_is_number)
     mw_ribs_wb_orientation_angles = Input()
 
     mw_n_ribs_te = Input(validator=lambda x: isinstance(x, int))
-    mw_ribs_te_spanwise_reference_spars_idx = Input(validator=val.all_is_number)
+    mw_ribs_te_spanwise_reference_spars_idx = Input(
+        validator=val.all_is_number)
     mw_ribs_te_spanwise_positions = Input(validator=val.all_is_number)
     mw_ribs_te_orientation_reference_spars = Input(validator=val.all_is_number)
     mw_ribs_te_orientation_angles = Input()
 
     mw_n_ribs_le = Input(validator=lambda x: isinstance(x, int))
-    mw_ribs_le_spanwise_reference_spars_idx = Input(validator=val.all_is_number)
+    mw_ribs_le_spanwise_reference_spars_idx = Input(
+        validator=val.all_is_number)
     mw_ribs_le_spanwise_positions = Input(validator=val.all_is_number)
     mw_ribs_le_orientation_reference_spars = Input(validator=val.all_is_number)
     mw_ribs_le_orientation_angles = Input()
@@ -101,6 +110,7 @@ class Aircraft(GeomBase):
     mw_engine_spanwise_positions = Input(validator=val.all_is_number)
     mw_engine_overhangs = Input(validator=val.all_is_number)
     mw_engine_thrusts = Input(validator=val.all_is_number)
+    mw_engine_specific_fuel_consumptions = Input(validator=val.all_is_number)
     mw_engine_diameters_inlet = Input([2., 2.], validator=val.all_is_number)
     mw_engine_diameters_outlet = Input([1., 1.], validator=val.all_is_number)
     mw_engine_diameters_part2 = Input([.5, .5], validator=val.all_is_number)
@@ -180,6 +190,7 @@ class Aircraft(GeomBase):
     ht_engine_spanwise_positions = Input(validator=val.all_is_number)
     ht_engine_overhangs = Input(validator=val.all_is_number)
     ht_engine_thrusts = Input(validator=val.all_is_number)
+    ht_engine_specific_fuel_consumptions = Input(validator=val.all_is_number)
     ht_engine_diameters_inlet = Input([2., 2.], validator=val.all_is_number)
     ht_engine_diameters_outlet = Input([1., 1.], validator=val.all_is_number)
     ht_engine_diameters_part2 = Input([.5, .5], validator=val.all_is_number)
@@ -258,6 +269,7 @@ class Aircraft(GeomBase):
     vt_engine_spanwise_positions = Input(validator=val.all_is_number)
     t_engine_overhangs = Input(validator=val.all_is_number)
     vt_engine_thrusts = Input(validator=val.all_is_number)
+    vt_engine_specific_fuel_consumptions = Input(validator=val.all_is_number)
     vt_engine_diameters_inlet = Input([2., 2.], validator=val.all_is_number)
     vt_engine_diameters_outlet = Input([1., 1.], validator=val.all_is_number)
     vt_engine_diameters_part2 = Input([.5, .5], validator=val.all_is_number)
@@ -265,6 +277,10 @@ class Aircraft(GeomBase):
     vt_engine_length_cones2 = Input([1., 1.], validator=val.all_is_number)
 
     __initargs__ = [
+        # Aircraft weights
+        'ZFM', 'fuel_fraction',
+        # Cruise parameters
+        'velocity', 'mach', 'reynolds', 'air_density', 'ult_load_factor', 'g0',
         # Fuselage inputs -----------------------------------------------------
         'fuselage_diameter', 'fuselage_tail_angle', 'fuselage_tail_length',
         'fuselage_cockpit_length', 'fuselage_cabin_length',
@@ -311,6 +327,7 @@ class Aircraft(GeomBase):
         'mw_n_engines',
         'mw_engine_spanwise_positions', 'mw_engine_overhangs',
         'mw_engine_thrusts',
+        'mw_engine_specific_fuel_consumptions',
         # Horizontal tail inputs ----------------------------------------------
         # Positioning
         'horizontal_tail_trans_pos', 'horizontal_tail_lat_pos',
@@ -352,6 +369,7 @@ class Aircraft(GeomBase):
         'ht_n_engines',
         'ht_engine_spanwise_positions', 'ht_engine_overhangs',
         'ht_engine_thrusts',
+        'ht_engine_specific_fuel_consumptions',
         # Vertical tail inputs ----------------------------------------------
         # Positioning
         'vertical_tail_trans_pos',
@@ -392,19 +410,20 @@ class Aircraft(GeomBase):
         # Vertical tail engines inputs
         'vt_n_engines',
         'vt_engine_spanwise_positions', 'vt_engine_overhangs',
-        'vt_engine_thrusts'
+        'vt_engine_thrusts',
+        'vt_engine_specific_fuel_consumptions'
     ]
 
     # Optional inputs
     name = Input('aircraft')
     color = Input('white')
     transparency = Input(0.5)
-    avl_CL_start = Input(0.1)
-    avl_CL_end = Input(0.8)
-    avl_CL_step = Input(0.1)
-    avl_delta_e_start = Input(-30.)
-    avl_delta_e_end = Input(31.)
-    avl_delta_e_step = Input(30.)
+    avl_CL_start = Input(0.0)
+    avl_CL_end = Input(1.1)
+    avl_CL_step = Input(0.25)
+    avl_delta_e_start = Input(-40.)
+    avl_delta_e_end = Input(41.)
+    avl_delta_e_step = Input(20.)
     convergence_tol = Input(1e-4)
 
     @Part
@@ -480,6 +499,8 @@ class Aircraft(GeomBase):
                 'mw_engine_spanwise_positions->engine_spanwise_positions',
                 'mw_engine_overhangs->engine_overhangs',
                 'mw_engine_thrusts->engine_thrusts',
+                'mw_engine_specific_fuel_consumptions'
+                '->engine_specific_fuel_consumptions',
                 'mw_engine_diameters_inlet->engine_diameters_inlet',
                 'mw_engine_diameters_outlet->engine_diameters_outlet',
                 'mw_engine_diameters_part2->engine_diameters_part2',
@@ -551,6 +572,8 @@ class Aircraft(GeomBase):
                 'mw_engine_spanwise_positions->engine_spanwise_positions',
                 'mw_engine_overhangs->engine_overhangs',
                 'mw_engine_thrusts->engine_thrusts',
+                'mw_engine_specific_fuel_consumptions'
+                '->engine_specific_fuel_consumptions',
                 'mw_engine_diameters_inlet->engine_diameters_inlet',
                 'mw_engine_diameters_outlet->engine_diameters_outlet',
                 'mw_engine_diameters_part2->engine_diameters_part2',
@@ -620,6 +643,8 @@ class Aircraft(GeomBase):
                 'vt_engine_spanwise_positions->engine_spanwise_positions',
                 'vt_engine_overhangs->engine_overhangs',
                 'vt_engine_thrusts->engine_thrusts',
+                'vt_engine_specific_fuel_consumptions'
+                '->engine_specific_fuel_consumptions',
                 'vt_engine_diameters_inlet->engine_diameters_inlet',
                 'vt_engine_diameters_outlet->engine_diameters_outlet',
                 'vt_engine_diameters_part2->engine_diameters_part2',
@@ -635,20 +660,19 @@ class Aircraft(GeomBase):
             location=translate(self.fuselage.point_at_fractions(
                 1.,
                 self.horizontal_tail_trans_pos,
-                self.horizontal_tail_lat_pos),
-                'x_', self.ht_chords[0] * self.ht_scale_factor)
-            if self.tail_type == 'conventional' else
-            self.vertical_tail.sections[-1].position.location,
-            chords=[self.ht_scale_factor * chord for chord in self.ht_chords],
-            semi_span=self.ht_scale_factor * self.ht_semi_span,
+                self.horizontal_tail_lat_pos
+            ), self.position.Vx_, self.ht_chords[0])
+            if self.tail_type == 'conventional'
+            else self.vertical_tail.sections[-1].position.location,
             map_down=[
                 # Wing segments inputs
                 'ht_n_wing_segments->n_wing_segments',
-                'ht_airfoil_names->airfoil_names', 'ht_twists->twists',
+                'ht_airfoil_names->airfoil_names',
+                'ht_chords->chords', 'ht_twists->twists',
                 'ht_sweeps_le->sweeps_le',
                 'ht_dihedral_angles->dihedral_angles',
                 'ht_spanwise_positions->spanwise_positions',
-                'ht_wing_cant->wing_cant',
+                'ht_semi_span->semi_span', 'ht_wing_cant->wing_cant',
                 # Spars inputs
                 'ht_n_spars->n_spars',
                 'ht_spar_chordwise_positions->spar_chordwise_positions',
@@ -694,6 +718,8 @@ class Aircraft(GeomBase):
                 'ht_engine_spanwise_positions->engine_spanwise_positions',
                 'ht_engine_overhangs->engine_overhangs',
                 'ht_engine_thrusts->engine_thrusts',
+                'ht_engine_specific_fuel_consumptions'
+                '->engine_specific_fuel_consumptions',
                 'ht_engine_diameters_inlet->engine_diameters_inlet',
                 'ht_engine_diameters_outlet->engine_diameters_outlet',
                 'ht_engine_diameters_part2->engine_diameters_part2',
@@ -710,20 +736,19 @@ class Aircraft(GeomBase):
             location=translate(self.fuselage.point_at_fractions(
                 1.,
                 self.horizontal_tail_trans_pos,
-                -self.horizontal_tail_lat_pos),
-                'x_', self.ht_chords[0] * self.ht_scale_factor)
-            if self.tail_type == 'conventional' else
-            self.vertical_tail.sections[-1].position.location,
-            chords=[self.ht_scale_factor * chord for chord in self.ht_chords],
-            semi_span=self.ht_scale_factor * self.ht_semi_span,
+                -self.horizontal_tail_lat_pos
+            ), self.position.Vx_, self.ht_chords[0])
+            if self.tail_type == 'conventional'
+            else self.vertical_tail.sections[-1].position.location,
             map_down=[
                 # Wing segments inputs
                 'ht_n_wing_segments->n_wing_segments',
-                'ht_airfoil_names->airfoil_names', 'ht_twists->twists',
+                'ht_airfoil_names->airfoil_names',
+                'ht_chords->chords', 'ht_twists->twists',
                 'ht_sweeps_le->sweeps_le',
                 'ht_dihedral_angles->dihedral_angles',
                 'ht_spanwise_positions->spanwise_positions',
-                'ht_wing_cant->wing_cant',
+                'ht_semi_span->semi_span', 'ht_wing_cant->wing_cant',
                 # Spars inputs
                 'ht_n_spars->n_spars',
                 'ht_spar_chordwise_positions->spar_chordwise_positions',
@@ -769,6 +794,8 @@ class Aircraft(GeomBase):
                 'ht_engine_spanwise_positions->engine_spanwise_positions',
                 'ht_engine_overhangs->engine_overhangs',
                 'ht_engine_thrusts->engine_thrusts',
+                'ht_engine_specific_fuel_consumptions'
+                '->engine_specific_fuel_consumptions',
                 'ht_engine_diameters_inlet->engine_diameters_inlet',
                 'ht_engine_diameters_outlet->engine_diameters_outlet',
                 'ht_engine_diameters_part2->engine_diameters_part2',
@@ -787,8 +814,6 @@ class Aircraft(GeomBase):
     @Part
     def scissor_plot(self):
         return ScissorPlot(
-            # TODO: Als het mogelijk is, deze CL_0 berekeningen enzo even
-            #  koppelen aan AVL.
             CL_0=self.main_wing_starboard.CL_0,
             Cm_0=self.main_wing_starboard.Cm_0,
             CL_alpha_wing=math.degrees(self.main_wing_starboard.CL_alpha),
@@ -818,6 +843,21 @@ class Aircraft(GeomBase):
         return Plane(self.position, self.position.Vy, self.position.Vx)
 
     @Attribute
+    def MTOM(self):
+        mw_fuel = 2. * sum(
+            tank.fuel.initial_mass
+            for tank in self.main_wing_starboard.fuel_tanks
+        )
+        ht_fuel = 2. * sum(
+            tank.fuel.initial_mass
+            for tank in self.horizontal_tail_starboard.fuel_tanks
+        )
+        vt_fuel = sum(
+            tank.fuel.initial_mass for tank in self.vertical_tail.fuel_tanks
+        )
+        return self.ZFM + mw_fuel + ht_fuel + vt_fuel
+
+    @Attribute
     def wing_area(self):
         """ Return the wing area.
 
@@ -834,7 +874,7 @@ class Aircraft(GeomBase):
     def mac_position(self):
         return Point(self.main_wing_starboard.mac_position.x,
                      0.,
-                     self.main_wing_starboard.mac_position.x)
+                     self.main_wing_starboard.mac_position.z)
 
     @Attribute
     def aspect_ratio(self):
@@ -865,9 +905,7 @@ class Aircraft(GeomBase):
             reference_area=self.wing_area,
             reference_chord=self.main_wing_starboard.mean_aerodynamic_chord,
             reference_span=self.mw_span,
-            reference_point=Point(self.main_wing_starboard.mac_position.x,
-                                  0.,
-                                  self.main_wing_starboard.mac_position.z)
+            reference_point=self.mac_position
             )
 
     @Attribute
@@ -946,13 +984,12 @@ class Aircraft(GeomBase):
         l_nose_le = self.net_root_le_point.x - self.position.x
         mac = self.main_wing_starboard.mean_aerodynamic_chord
         x_ac_rest_1 = -1.8 / self.Cl_alpha_a_h * self.fuselage_diameter ** 2 \
-                      * l_nose_le / (self.wing_area * mac)
+            * l_nose_le / (self.wing_area * mac)
         x_ac_rest_2 = 0.273 / (1 + wing.taper_ratio) * (
                 self.wing_area / self.mw_span) * self.fuselage_diameter * (
                               self.mw_span - self.fuselage_diameter) / \
-                      (mac ** 2 *
-                       (self.mw_span + 2.15 * self.fuselage_diameter)) \
-                      * math.tan(math.radians(wing.sweep_c_over_4))
+            (mac ** 2 * (self.mw_span + 2.15 * self.fuselage_diameter)) \
+            * math.tan(math.radians(wing.sweep_c_over_4))
         return x_ac_wing + x_ac_rest_1 + x_ac_rest_2 + x_ac_engines
 
     @Attribute
@@ -966,9 +1003,9 @@ class Aircraft(GeomBase):
         # TODO: CL_alpha a_h (main wings + fuselage uit AVL halen.
         gradient_rad = cl_alpha_wing * (
                 1 + 2.15 * self.fuselage_diameter / self.mw_span) \
-                * self.net_wing_area / self.wing_area + math.pi / 2. * \
-                self.fuselage_diameter ** 2 \
-                / self.wing_area
+            * self.net_wing_area / self.wing_area + math.pi / 2. * \
+            self.fuselage_diameter ** 2 \
+            / self.wing_area
         return gradient_rad
 
     @Attribute
@@ -984,133 +1021,175 @@ class Aircraft(GeomBase):
         )
 
     @Attribute
+    def l_v(self):
+        return self.vertical_tail.mac_position.x - (
+            self.main_wing_starboard.x_lemac + self.x_ac_wing_fus *
+            self.main_wing_starboard.mean_aerodynamic_chord
+        )
+
+    @Attribute
     def z_h(self):
         return self.horizontal_tail_starboard.position.z - \
                self.main_wing_starboard.position.z
 
     @Attribute
-    def ht_scale_factor(self):
-        scale_factor_total = 1.
-        scale_factor_old = 1000.
-        scale_factor = 1.
-        chords = [chord * scale_factor for chord in self.ht_chords]
-        semi_span = self.ht_semi_span * scale_factor
+    def CL(self):
+        weight = self.mass * self.g0
+        rho = self.air_density
+        v = self.velocity
+        s = self.wing_area
+        return weight / (0.5 * rho * v ** 2 * s)
 
-        while abs((scale_factor - scale_factor_old) / scale_factor_old) > \
-                self.convergence_tol:
-            chords = [chord * scale_factor for chord in chords]
-            semi_span = scale_factor * semi_span
-            horizontal_tail = Wing(
-                name='unscaled_horizontal_tail',
-                location=translate(self.fuselage.point_at_fractions(
-                    1.,
-                    self.horizontal_tail_trans_pos,
-                    self.horizontal_tail_lat_pos),
-                    'x_', self.ht_chords[0])
-                if self.tail_type == 'conventional' else
-                self.vertical_tail.sections[-1].position.location,
-                # Wing segments inputs
-                n_wing_segments=self.ht_n_wing_segments,
-                airfoil_names=self.ht_airfoil_names,
-                chords=chords,
-                twists=self.ht_twists,
-                sweeps_le=self.ht_sweeps_le,
-                dihedral_angles=self.ht_dihedral_angles,
-                spanwise_positions=self.ht_spanwise_positions,
-                semi_span=semi_span,
-                wing_cant=self.ht_wing_cant,
-                # Spars inputs
-                n_spars=self.ht_n_spars,
-                spar_chordwise_positions=self.ht_spar_chordwise_positions,
-                spar_aspect_ratios=self.ht_spar_aspect_ratios,
-                spar_profiles=self.ht_spar_profiles,
-                spar_spanwise_positions_end=self.ht_spar_spanwise_positions_end,
-                # Wing box ribs inputs
-                n_ribs_wb=self.ht_n_ribs_wb,
-                ribs_wb_spanwise_reference_spars_idx=
-                self.ht_ribs_wb_spanwise_reference_spars_idx,
-                ribs_wb_spanwise_positions=self.ht_ribs_wb_spanwise_positions,
-                ribs_wb_orientation_reference_spars=
-                self.ht_ribs_wb_orientation_reference_spars,
-                ribs_wb_orientation_angles=self.ht_ribs_wb_orientation_angles,
-                # Trailing edge riblets inputs
-                n_ribs_te=self.ht_n_ribs_te,
-                ribs_te_spanwise_reference_spars_idx=
-                self.ht_ribs_te_spanwise_reference_spars_idx,
-                ribs_te_spanwise_positions=self.ht_ribs_te_spanwise_positions,
-                ribs_te_orientation_reference_spars=
-                self.ht_ribs_te_orientation_reference_spars,
-                ribs_te_orientation_angles=self.ht_ribs_te_orientation_angles,
-                # Leading edge riblets inputs
-                n_ribs_le=self.ht_n_ribs_le,
-                ribs_le_spanwise_reference_spars_idx=
-                self.ht_ribs_le_spanwise_reference_spars_idx,
-                ribs_le_spanwise_positions=self.ht_ribs_le_spanwise_positions,
-                ribs_le_orientation_reference_spars=
-                self.ht_ribs_le_orientation_reference_spars,
-                ribs_le_orientation_angles=self.ht_ribs_le_orientation_angles,
-                # Fuel tank inputs
-                fuel_tank_boundaries=self.ht_fuel_tank_boundaries,
-                # Movables inputs
-                n_movables=self.ht_n_movables,
-                movable_spanwise_starts=self.ht_movable_spanwise_starts,
-                movable_spanwise_ends=self.ht_movable_spanwise_ends,
-                movable_hingeline_starts=self.ht_movable_hingeline_starts,
-                movable_deflections=self.ht_movable_deflections,
-                movables_symmetric=self.ht_movables_symmetric,
-                movables_names=self.ht_movables_names,
-                # Engines inputs
-                n_engines=self.ht_n_engines
-            )
-            scissor_plot = ScissorPlot(
-                CL_0=self.main_wing_starboard.CL_0,
-                Cm_0=self.main_wing_starboard.Cm_0,
-                CL_alpha_wing=math.degrees(self.main_wing_starboard.CL_alpha),
-                CL_alpha_horizontal=math.degrees(horizontal_tail.CL_alpha),
-                sweep_angle_025c=math.radians(self.main_wing_starboard
-                                              .sweep_c_over_4),
-                fuselage_diameter=self.fuselage.diameter,
-                fuselage_length=self.fuselage.length,
-                mac=self.main_wing_starboard.mean_aerodynamic_chord,
-                span=self.mw_span,
-                aspect_ratio=self.aspect_ratio,
-                stability_margin=self.stability_margin,
-                wing_area=self.wing_area,
-                net_wing_area=self.net_wing_area,
-                l_h=horizontal_tail.mac_position.x - (
-                        self.main_wing_starboard.x_lemac + self.x_ac_wing_fus *
-                        self.main_wing_starboard.mean_aerodynamic_chord
-                ),
-                z_h=horizontal_tail.mac_position.z -
-                    self.main_wing_starboard.mac_position.z,
-                x_ac=self.x_ac_wing_fus,
-                CL_alpha_a_h=self.Cl_alpha_a_h,
-                tail_type=self.tail_type,
-                forward_cg=self.forward_cg, # TODO Parametrise this c.g.
-                aft_cg=self.aft_cg  # TODO Parametrise this c.g.
-            )
-            scale_factor_old = scale_factor
-            scale_factor = (scissor_plot.tail_area / 2. /
-                            horizontal_tail.reference_area) ** 0.5
-            scale_factor_total *= scale_factor
-            print 'ht ref area: {}'.format(horizontal_tail.reference_area)
-            print 'scissor plot ht area: {}'.format(scissor_plot.tail_area / 2.)
-            print 'scale_factor_old: {}'.format(scale_factor_old)
-            print 'scale_factor: {}'.format(scale_factor)
-            print 'scale_factor_diff: {}'.format(
-                (scale_factor - scale_factor_old) / scale_factor_old)
-            print '_________________________________________________________'
-        return scale_factor_total
+    @Attribute
+    def empty_cog(self):
+        """ Return the cog position of the aircraft without fuel.
+
+        :rtype: parapy.geom.generic.positioning.Point
+        """
+        wings = [self.main_wing_starboard, self.main_wing_port,
+                 self.horizontal_tail_starboard, self.horizontal_tail_port,
+                 self.vertical_tail]
+        engines = [engine for wing in wings[:2] for engine in wing.engines]
+        empty_mass = sum(wing.mass for wing in wings) +\
+            sum(engine.mass for engine in engines) + self.fuselage.mass
+        empty_mass_moment = self.fuselage.mass * np.array(self.fuselage.cog) +\
+            sum(engine.mass * np.array(engine.cog) for engine in engines) +\
+            sum(wing.mass * np.array(wing.cog) for wing in wings)
+        return Point(*empty_mass_moment / empty_mass)
+
+    @Attribute
+    def full_cog(self):
+        """ Return the cog position of the aircraft with max. fuel.
+
+        :rtype: parapy.geom.generic.positioning.Point
+        """
+        cog_full = (self.ZFM * np.array(self.empty_cog) +
+                    self.max_fuel_mass * np.array(self.max_fuel_cog)) / \
+            self.MTOM
+
+        return Point(*cog_full)
+
+    @Attribute
+    def cog(self):
+        """ Return the current cog position of the aircraft.
+
+        :rtype: parapy.geom.generic.positioning.Point
+        """
+        cog = (self.ZFM * np.array(self.empty_cog) +
+               self.fuel_mass * np.array(self.fuel_cog)) / self.mass
+
+        return Point(*cog)
+
+    @Attribute
+    def mass(self):
+        """ Return the current mass of the aircraft.
+
+        :rtype: float
+        """
+        return self.ZFM + self.fuel_mass
+
+    @Attribute
+    def max_fuel_mass(self):
+        """ Return the maximum fuel mass that can be carried by this aircraft.
+
+        :rtype: float
+        """
+        return sum(tank.fuel.initial_mass
+                   for _child in self.children if hasattr(_child, 'fuel_tanks')
+                   for tank in _child.fuel_tanks if tank.is_used)
+
+    @Attribute
+    def max_fuel_cog(self):
+        """ Return the position of the centre of gravity of the fuel,
+        when the aircraft is at maximum fuel capacity.
+
+        :rtype: parapy.geom.generic.positioning.Point
+        """
+        first_moment_of_mass = sum(
+            tank.fuel.initial_mass * np.array(tank.solid.cog)
+            for _child in self.children if hasattr(_child, 'fuel_tanks')
+            for tank in _child.fuel_tanks if tank.is_used
+        )
+        return Point(*first_moment_of_mass / self.max_fuel_mass)
+
+    @Attribute
+    def fuel_mass(self):
+        """ Return the current fuel mass that is carried by this aircraft.
+
+        :rtype: float
+        """
+        return sum(tank.fuel.mass
+                   for _child in self.children if hasattr(_child, 'fuel_tanks')
+                   for tank in _child.fuel_tanks if not tank.is_empty)
+
+    @Attribute
+    def fuel_cog(self):
+        """ Return the current position of the centre of gravity of the fuel.
+
+        :rtype: parapy.geom.generic.positioning.Point
+        """
+        first_moment_of_mass = sum(tank.fuel.mass * np.array(tank.fuel.cog)
+                                   for _child in self.children
+                                   if hasattr(_child, 'fuel_tanks')
+                                   for tank in _child.fuel_tanks
+                                   if not tank.is_empty)
+        if self.fuel_mass <= 0.:
+            return ORIGIN
+        else:
+            return Point(*first_moment_of_mass / self.fuel_mass)
 
     @Attribute
     def forward_cg(self):
-        # TODO Hier nog even de uitgerekende forward and aft c.g's invullen
-        return 0.12
+        """ The most forward position of the center of gravity, expressed as a
+        fraction of the mean aerodynamic chord.
+
+        :rtype: float
+        """
+        forward_cg = min([self.full_cog, self.empty_cog], key=lambda pt: pt.x)
+        return (forward_cg.x - self.main_wing_starboard.x_lemac) / \
+            self.main_wing_starboard.mean_aerodynamic_chord
 
     @Attribute
     def aft_cg(self):
-        # TODO Hier nog even de uitgerekende forward and aft c.g's invullen
-        return 0.3
+        """ The most rearward position of the center of gravity, expressed
+        as a fraction of the mean aerodynamic chord.
+
+        :rtype: float
+        """
+        rear_cg = max([self.full_cog, self.empty_cog], key=lambda pt: pt.x)
+        return (rear_cg.x - self.main_wing_starboard.x_lemac) / \
+            self.main_wing_starboard.mean_aerodynamic_chord
+
+    def trim(self, max_iter=50):
+        """ Trim the aircraft by deflecting the elevator in such a way that
+        the aerodynamic moments balance the aircraft weight-induced moments.
+        Returns the required elevator deflection for trim conditions.
+
+        :rtype: float
+        """
+        # Take all the moments around the nose of the aircraft.
+        arm = self.cog - self.position
+        weight_cm = self.CL * arm.x / self.mean_aerodynamic_chord
+
+        convergence_error = np.inf
+        interval = [self.avl_delta_e_start, self.avl_delta_e_end]
+        n_iter = 0
+
+        while convergence_error > self.convergence_tol and n_iter <= max_iter:
+            # Set the elevator deflection to the midpoint of the interval
+            delta_e = sum(interval) / len(interval)
+            aero_cm = self.get_Cm(self.CL, delta_e)
+            if weight_cm + aero_cm > 0:
+                # If the weight moment outweighs the aerodynamic moment
+                interval = [delta_e, interval[-1]]
+            else:
+                interval = [interval[0], delta_e]
+
+            convergence_error = abs(weight_cm + aero_cm)
+
+            n_iter += 1
+
+        return delta_e
 
     def get_alpha(self, CL, delta_e):
         """ Return the drag coefficient for a given alpha (angle
@@ -1208,7 +1287,13 @@ class Aircraft(GeomBase):
 
     def get_custom_avl_results(self, alpha, show_trefftz_plot=False,
                                show_geometry=False, **kwargs):
-        """
+        """ Get avl results for a custom set of case parameters. Using
+        ``**kwargs``, the elevator, aileron, or flap deflections can be set,
+        or any other movable that has been properly defined with a name.
+
+        .. note::
+           Trying to show the trefftz plot or the geometry in AVL is known
+           to crash often, when run from the Python console.
 
         :param alpha: the angle of attack of the configuration.
         :type alpha: float
@@ -1238,18 +1323,23 @@ if __name__ == '__main__':
     from parapy.gui import display
 
     obj = Aircraft(
+        # Aircraft weights
+        ZFM=50000., fuel_fraction=0.4,
         # Cruise flight parameters
-        velocity=225.,
+        velocity=235.,
         mach=0.8,
+        reynolds=1000000,
         air_density=0.35,
+        ult_load_factor=1.5 * 2.5,
+        g0=9.80665,
         # Stability inputs
         stability_margin=0.05,
         # Tail configuration inputs
         tail_type='conventional',
         # Fuselage inputs -----------------------------------------------------
-        fuselage_tail_angle=30., fuselage_tail_length=5.,
-        fuselage_cockpit_length=3., fuselage_cabin_length=20.,
-        fuselage_diameter=3., fuselage_nose_length=1.,
+        fuselage_tail_angle=35., fuselage_tail_length=5.,
+        fuselage_cockpit_length=3., fuselage_cabin_length=30.,
+        fuselage_diameter=3.5, fuselage_nose_length=1.,
         # Main wing inputs ----------------------------------------------------
         # Wing positioning
         main_wing_long_pos=0.4, main_wing_trans_pos=0.5, main_wing_lat_pos=0.5,
@@ -1305,7 +1395,8 @@ if __name__ == '__main__':
         mw_n_engines=4,
         mw_engine_spanwise_positions=[0.15, 0.5],
         mw_engine_overhangs=[0.4, 0.3],
-        mw_engine_thrusts=[120000, 120000],
+        mw_engine_thrusts=[50000., 50000.],
+        mw_engine_specific_fuel_consumptions=[1.79e-5, 1.79e-5],
         # Horizontal tail inputs ----------------------------------------------
         # Wing positioning
         horizontal_tail_trans_pos=0.4, horizontal_tail_lat_pos=0.5,

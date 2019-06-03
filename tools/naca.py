@@ -51,7 +51,8 @@ def linspace(start, stop, np):
 def interpolate(xa, ya, queryPoints):
     """
     A cubic spline interpolation on a given set of points (x,y)
-    Recalculates everything on every call which is far from efficient but does the job for now
+    Recalculates everything on every call which is far from efficient but does
+    the job for now
     should eventually be replaced by an external helper class
     """
 
@@ -103,9 +104,9 @@ def interpolate(xa, ya, queryPoints):
         klo = 0
         khi = n - 1
 
-        while (khi - klo > 1):
+        while khi - klo > 1:
             k = (khi + klo) >> 1
-            if (xa[k] > queryPoints[i]):
+            if xa[k] > queryPoints[i]:
                 khi = k
             else:
                 klo = k
@@ -148,8 +149,8 @@ def naca4(number, n, finite_te=False, half_cosine_spacing=False):
     else:
         x = linspace(0.0, 1.0, n + 1)
 
-    yt = [5 * t * (a0 * sqrt(xx) + a1 * xx + a2 * pow(xx, 2) + a3 * pow(xx,
-                                                                        3) + a4 * pow(
+    yt = [5 * t * (a0 * sqrt(xx) + a1 * xx + a2 * pow(xx, 2) + a3
+                   * pow(xx, 3) + a4 * pow(
         xx, 4)) for xx in x]
 
     xc1 = [xx for xx in x if xx <= p]
@@ -216,8 +217,8 @@ def naca5(number, n, finite_te=False, half_cosine_spacing=False):
     else:
         x = linspace(0.0, 1.0, n + 1)
 
-    yt = [5 * t * (a0 * sqrt(xx) + a1 * xx + a2 * pow(xx, 2) + a3 * pow(xx,
-                                                                        3) + a4 * pow(
+    yt = [5 * t * (a0 * sqrt(xx) + a1 * xx + a2 * pow(xx, 2) + a3
+                   * pow(xx, 3) + a4 * pow(
         xx, 4)) for xx in x]
 
     P = [0.05, 0.1, 0.15, 0.2, 0.25]
@@ -300,7 +301,8 @@ class Display(object):
 
 def demo(profNaca=['0009', '2414', '6409'], nPoints=240, finite_TE=False,
          half_cosine_spacing=False):
-    # profNaca = ['0009', '0012', '2414', '2415', '6409' , '0006', '0008', '0010', '0012', '0015']
+    # profNaca = ['0009', '0012', '2414', '2415', '6409' , '0006', '0008',
+    # '0010', '0012', '0015']
     d = Display()
     for i, p in enumerate(profNaca):
         X, Y = naca(p, nPoints, finite_TE, half_cosine_spacing)
@@ -312,12 +314,12 @@ def main():
     import os
     from argparse import ArgumentParser, RawDescriptionHelpFormatter
     from textwrap import dedent
-    parser = ArgumentParser( \
-        formatter_class=RawDescriptionHelpFormatter, \
+    parser = ArgumentParser(
+        formatter_class=RawDescriptionHelpFormatter,
         description=dedent('''\
             Script to create NACA4 and NACA5 profiles
             If no argument is provided, a demo is displayed.
-            '''), \
+            '''),
         epilog=dedent('''\
             Examples:
                 Get help
@@ -336,8 +338,9 @@ def main():
     parser.add_argument('-p', '--profile', type=str, \
                         help='Profile name or set of profiles names separated by spaces. Example: "0009", "0009 2414 6409"')
     parser.add_argument('-n', '--nbPoints', type=int, default=120, \
-                        help='Number of points used to discretize chord. Profile will have 2*nbPoints+1 dots. Default is 120.')
-    parser.add_argument('-s', '--half_cosine_spacing', action='store_true', \
+                        help='Number of points used to discretize chord. '
+                        'Profile will have 2*nbPoints+1 dots. Default is 120.')
+    parser.add_argument('-s', '--half_cosine_spacing', action='store_true',
                         help='Half cosine based spacing, instead of a linear spacing of chord. ' \
                              'This option is recommended to have a smooth leading edge.')
     parser.add_argument('-f', '--finite_TE', action='store_true', \

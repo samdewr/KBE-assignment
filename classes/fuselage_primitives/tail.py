@@ -1,24 +1,22 @@
+import numpy as np
 from parapy.core import *
 from parapy.geom import *
-from cabin import Cabin
-import numpy as np
-from math import sqrt
 
 
 class TailCone(LoftedSurface):
 
     # Inputs for the Tail
     height_ratio = Input()
-    length = Input()
-    fuselage_diameter = Input()
+    length = Input(validator=val.is_positive)
+    fuselage_diameter = Input(validator=val.is_positive)
 
     @Attribute
     def tail_scaling_list(self):
         """ Generates a list of scaling factors that decreases step by step
         this is later used for the generation of the circles that form the
         tail.
-                :rtype: float
-                """
+        :rtype: float
+        """
         return np.arange(1., 0.05, -0.05)
 
     @Attribute
@@ -26,8 +24,9 @@ class TailCone(LoftedSurface):
     def section_length(self):
         """ Defines the length between each circle. This will also be used
         later for the generation of the circles.
-                :rtype: float
-                """
+
+        :rtype: float
+        """
         return self.length / (len(self.tail_scaling_list) - 1)
 
     @Part(in_tree=False)
@@ -36,8 +35,8 @@ class TailCone(LoftedSurface):
         smaller and smaller by each circle with the help of the scaling
         list. Furthermore, The position is affected by height ratio
 
-                :rtype: parapy.geom.occ.curve.Circle
-                """
+        :rtype: parapy.geom.occ.curve.Circle
+        """
         return Circle(
             quantify=len(self.tail_scaling_list),
             position=rotate90(
@@ -45,17 +44,17 @@ class TailCone(LoftedSurface):
                           'x', child.index * self.section_length,
                           'y', self.fuselage_diameter * self.height_ratio *
                           (self.tail_scaling_list[0] -
-                           self.tail_scaling_list[child.index])),
-                'y'),
-            radius=self.tail_scaling_list[child.index] *
-                   self.fuselage_diameter / 2.)
+                           self.tail_scaling_list[child.index])), 'y'),
+            radius=self.tail_scaling_list[child.index]
+            * self.fuselage_diameter / 2.)
 
     @Attribute
     def profiles(self):
         """ This is the input for the LoftedSurface that generates the shell
         for the total tail.
-            :rtype: parapy.geom.occ.lofting.LoftedSurface
-                        """
+
+        :rtype: parapy.geom.occ.lofting.LoftedSurface
+        """
         return self.tail_circles
 
     @Attribute

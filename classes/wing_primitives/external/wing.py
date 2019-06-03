@@ -1,10 +1,11 @@
-from math import radians
-
 import kbeutils.avl as avl
 import numpy as np
+import pandas as pd
+from os import getcwd
+from os.path import join, dirname
 from parapy.core import *
 from parapy.geom import *
-
+import math
 from classes.engines.engine import Engine
 from classes.wing_primitives.external.airfoil import \
     IntersectedAirfoil
@@ -47,6 +48,16 @@ class Wing(SewnShell):
           degrees along a vector along the global 'x' direction)
 
     """
+    # Class constants
+    try:
+        ROOT_DIR = dirname(dirname(dirname(dirname(__file__))))
+    except NameError:
+        ROOT_DIR = getcwd()
+
+    CONSTANTS = pd.read_excel(join(ROOT_DIR, 'input', 'aircraft_config.xlsx'),
+                              sheet_name='aircraft', index_col=0)
+    reynolds = CONSTANTS.loc['reynolds']['Value']
+    mach = CONSTANTS.loc['mach']['Value']
 
     # Required inputs
     n_wing_segments = Input(validator=lambda x: isinstance(x, int))
@@ -111,13 +122,12 @@ class Wing(SewnShell):
     engine_spanwise_positions = Input(validator=val.all_is_number)
     engine_overhangs = Input(validator=val.all_is_number)
     engine_thrusts = Input(validator=val.all_is_number)
+    engine_specific_fuel_consumptions = Input(validator=val.all_is_number)
     engine_diameters_inlet = Input([2., 2.], validator=val.all_is_number)
     engine_diameters_outlet = Input([1., 1.], validator=val.all_is_number)
     engine_diameters_part2 = Input([0.5, 0.5], validator=val.all_is_number)
     engine_length_cones1 = Input([2., 2.], validator=val.all_is_number)
     engine_length_cones2 = Input([1., 1.], validator=val.all_is_number)
-
-    tolerance = 1e-7
 
     __initargs__ = ['n_wing_segments', 'airfoil_names', 'chords', 'twists',
                     'sweeps_le', 'dihedral_angles', 'spanwise_positions',
@@ -142,9 +152,11 @@ class Wing(SewnShell):
                     'movables_symmetric',
                     'n_engines',
                     'engine_spanwise_positions', 'engine_overhangs',
-                    'engine_thrusts', 'engine_diameters_inlet',
-                    'engine_diameters_outlet', 'engine_diameters_part2',
-                    'engine_length_cones1', 'engine_length_cones2']
+                    'engine_thrusts',
+                    'engine_specific_fuel_consumptions',
+                    'engine_diameters_inlet', 'engine_diameters_outlet',
+                    'engine_diameters_part2', 'engine_length_cones1',
+                    'engine_length_cones2']
 
     @Input
     def position(self):
@@ -156,13 +168,14 @@ class Wing(SewnShell):
         """
         if self.is_starboard:
             return rotate(Position(self.location),
-                          'x', radians(self.wing_cant))
+                          'x', math.radians(self.wing_cant))
         else:
             return rotate(Position(self.location,
                                    Orientation(x='x', y='y_', z='z')),
-                          'x_', radians(self.wing_cant))
+                          'x_', math.radians(self.wing_cant))
 
     # Optional inputs
+    tolerance = 1e-7
     is_starboard = Input(True)
     location = Input(ORIGIN, validator=lambda pt: isinstance(pt, Point))
     airfoil_number_of_points = Input(100, validator=val.is_positive)
@@ -262,6 +275,8 @@ class Wing(SewnShell):
     def engines(self):
         return Engine(position=self.engine_positions[child.index],
                       map_down=['engine_thrusts->thrust',
+                                'engine_specific_fuel_consumptions'
+                                '->specific_fuel_consumption',
                                 'engine_diameters_inlet->diameter_inlet',
                                 'engine_diameters_outlet->diameter_outlet',
                                 'engine_diameters_part2->diameter_part2',
@@ -417,7 +432,7 @@ class Wing(SewnShell):
         """
         return CloseSurface([wing_segment for wing_segment in self.segments])
 
-    @Attribute(in_tree=True)
+    @Attribute  # (in_tree=True)
     def movable_sections(self):
         """ Returns airfoil sections at the boundaries of the control surface
         present on this wing. These are necessary because an AVL control
@@ -440,6 +455,18 @@ class Wing(SewnShell):
                 for pln in movable.spanwise_planes]
 
     @Attribute
+    def cog(self):
+        if self.name.startswith('vertical_tail'):
+            return Point(self.mac_position.x,
+                         self.mac_position.y, self.mac_position.z + 0.5 *
+                         self.mean_aerodynamic_chord)
+        else:
+            return Point(self.mac_position.x
+                         - 0.25 * self.mean_aerodynamic_chord + 0.4
+                         * self.mean_aerodynamic_chord,
+                         self.mac_position.y, self.mac_position.z)
+
+    @Attribute
     def sections(self):
         """ Return the airfoil sections of this wing at the defined stations.
 
@@ -449,16 +476,58 @@ class Wing(SewnShell):
                                                   segment in self.segments]
 
     @Attribute
+    def mass(self):
+        """ Returns the mass of this wing in kg, depending on whether it is a
+        vertical tail, horizontal tail, or main wing.
+
+        :rtype: float
+        """
+        if self.name.startswith('horizontal_tail'):
+            return self.horizontal_tail_mass / 2.
+        elif self.name.startswith('vertical_tail'):
+            return self.vertical_tail_mass
+        else:
+            return self.main_wing_mass / 2.
+
+    @Attribute
+    def main_wing_mass(self):
+        """ Return the wing weight of this wing, if it is the main wing,
+        according to Roskam, in kg.
+
+        :rtype: float
+        """
+
+        return self.parent.MTOM * 0.10
+
+    @Attribute
+    def vertical_tail_mass(self):
+        """ Return the wing weight of this wing, if it is the vertical tail,
+        according to Roskam, in kg.
+
+        :rtype: float
+        """
+        return self.parent.MTOM * 1./3. * 0.02
+
+    @Attribute
+    def horizontal_tail_mass(self):
+        """ Return the wing weight of this wing, if it is the horizontal tail,
+        according to Roskam, in kg.
+
+        :rtype: float
+        """
+        # k_uht 1.143 for all moving tail
+        return self.parent.MTOM * 2./3. * 0.02
+
+    @Attribute
     def closed_shell(self):
         """ Return an outer shell version of this wing (thus without
         structural elements) with closed root and tip airfoils.
 
-        :rtype: parapy.geom.occ.shell.Shell_
+        :rtype: parapy.geom.occ.shell.Shell
         """
         return self.closed_solid.shells[0]
 
     # AVL analysis attributes and parts
-
     @Part
     def avl_analysis(self):
         """ The AVL analysis wrapper part.
@@ -496,27 +565,28 @@ class Wing(SewnShell):
            obtained values would not make sense otherwise.
         """
         is_root = self.parent is None
-        mac = self.mean_aerodynamic_chord if is_root \
-            else self.parent.mean_aerodynamic_chord
-        span = self.semi_span * 2 if is_root else self.parent.mw_span
-        ref_point = Point(self.mac_position.x, 0., self.mac_position.y) if \
-            is_root else self.parent.mac_position
-        mach = 0.8 if is_root else self.parent.mach
 
-        return avl.Configuration(name=self.name,
-                                 surfaces=[self.avl_surface],
-                                 mach=mach,
-                                 reference_area=self.reference_area * 2,
-                                 reference_chord=mac,
-                                 reference_span=span,
-                                 reference_point=ref_point)
+        return avl.Configuration(
+            name=self.name,
+            surfaces=[self.avl_surface],
+            mach=self.mach,
+            reference_area=self.reference_area * 2,
+            reference_chord=self.mean_aerodynamic_chord if is_root else
+            self.parent.mean_aerodynamic_chord,
+            reference_span=self.semi_span * 2 if is_root else
+            self.parent.mw_span,
+            reference_point=Point(self.mac_position.x, 0., self.mac_position.y)
+            if is_root else self.parent.mac_position
+        )
 
     @Attribute
     def cases(self):
         """ The run cases of AVL.
+
         .. note::
            The ailerons are never deflected, because due to the perfect
            symmetry, the CL does not change as a result
+
         """
         return [avl.Case(
             name='alpha_{0:0.1f}'.format(alpha),
@@ -555,6 +625,11 @@ class Wing(SewnShell):
 
         :rtype: float
         """
+        # Cm_0_OR = self.get_Cm(alpha=0.)
+        # centre_of_lift_pos = Cm_0_OR * self.mean_aerodynamic_chord / self.CL_0
+        # arm_centre_of_lift_ac = self.mac_position.x + centre_of_lift_pos
+        #
+        # return Cm_0_OR / centre_of_lift_pos * arm_centre_of_lift_ac
         return self.get_Cm(alpha=0.)
 
     @Attribute
@@ -1005,8 +1080,10 @@ if __name__ == '__main__':
         movable_hingeline_starts=[0.8, 0.85], movable_deflections=[5., 10.],
         movables_symmetric=[True, False], movables_names=['flap', 'aileron'],
         # Engines inputs
-        n_engines=2,
-        engine_spanwise_positions=[0.15, 0.5], engine_overhangs=[0.4, 0.3])
+        n_engines=4,
+        engine_spanwise_positions=[0.15, 0.5], engine_overhangs=[0.4, 0.3],
+        engine_thrusts=[50000., 50000.],
+        engine_specific_fuel_consumptions=[1.79e-5, 1.79e-5])
     obj2 = Wing(2, ['NACA2412', 'NACA2412', 'whitcomb'],
                 [6., 4.5, 1.2], [-2., 0., 3.], [15., 35.],
                 [2., 4.], [0.45], 15., 0., 2,

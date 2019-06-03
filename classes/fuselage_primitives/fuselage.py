@@ -1,6 +1,7 @@
+import math
+
 from parapy.core import *
 from parapy.geom import *
-import math
 
 from classes.fuselage_primitives.cabin import Cabin
 from classes.fuselage_primitives.nose import NoseCone
@@ -18,12 +19,12 @@ class Fuselage(SewnShell):
                     'cabin_length', 'nose_length']
 
     # Required inputs
-    diameter = Input()
-    tail_angle = Input()
-    tail_length = Input()
-    cockpit_length = Input()
-    cabin_length = Input()
-    nose_length = Input()
+    diameter = Input(validator=val.is_positive)
+    tail_angle = Input(validator=val.GE(0.))
+    tail_length = Input(validator=val.is_positive)
+    cockpit_length = Input(validator=val.is_positive)
+    cabin_length = Input(validator=val.is_positive)
+    nose_length = Input(validator=val.is_positive)
 
     # Optional inputs
     color = 'orange'
@@ -44,7 +45,16 @@ class Fuselage(SewnShell):
         """
 
         return self.tail_length * math.tan(math.radians(self.tail_angle)) / \
-               self.diameter - 0.5
+            self.diameter - 0.5
+
+    @Attribute
+    def cog(self):
+        return Point(0.45 * self.total_length, 0, 0.25 * self.diameter)
+
+    @Attribute
+    def total_length(self):
+        return self.tail_length + self.cockpit_length + self.nose_length +  \
+               self.cabin_length
 
     @Part(in_tree=False)
     def nose(self):
@@ -95,7 +105,6 @@ class Fuselage(SewnShell):
 
     @Attribute
     def solid(self):
-        # TODO: hangt af van of de tail goed aan kan sluiten aan de fuselage.
         return CloseSurface(self)
 
     @Attribute
@@ -127,11 +136,6 @@ class Fuselage(SewnShell):
         :rtype: parapy.geom.occ.projection.ProjectedCurve
         """
         return ProjectedCurve(self.center_line, self, self.position.Vz)
-    #
-    # @Attribute
-    # def avl_body(self):
-    #     points = [Point()]
-    #     return avl.Body()
 
     @Attribute
     def sample_points(self):
@@ -143,6 +147,14 @@ class Fuselage(SewnShell):
                   [min(profile.intersection_points(plne),
                        key=lambda pt: pt.z) for profile in profiles]]
         return points
+
+    @Attribute
+    def mass(self):
+        """ Return the fuselage mass in kg, estimated according to Roskam.
+
+        :rtype: float
+        """
+        return self.parent.MTOM * 0.085
 
     def point_at_fractions(self, f_long, f_trans, f_lat):
         """ Return a point at a certain longitudinal, transverse,

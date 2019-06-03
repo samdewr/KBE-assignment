@@ -6,17 +6,18 @@ from math import sqrt
 
 
 class NoseCone(FusedShell):
-    length = Input(2.)
-    cockpit_length = Input(5.)
-    final_diameter = Input(5.)
+    length = Input(validator=val.is_positive)
+    cockpit_length = Input(validator=val.is_positive)
+    final_diameter = Input(validator=val.is_positive)
 
     # list of scaling factors for the nose diameter
     @Attribute
     def list_scaling(self):
         """ Generates an array with the scaling factors, this will help with
         the scaling for the nose part of the nosecone.
-                        :rtype array
-                        """
+
+        :rtype array
+        """
         numbers = np.arange(0.0001, .5 ** 2, 0.01)
         numbers2 = [sqrt(i) for i in numbers]
         return numbers2
@@ -33,20 +34,22 @@ class NoseCone(FusedShell):
     def circles_nose(self):
         """ Builds the circles that lay the foundation for the nose. The
         circles change radius each time.
+
         :rtype: parapy.geom.occ.curve.Circle
         """
         return Circle(quantify=len(self.list_scaling),
                       position=rotate90(translate(self.position,
-                                        'x', child.index * self.nose_steps)
-                                        ,'y'),
+                                                  'x', child.index *
+                                                  self.nose_steps), 'y'),
                       radius=self.list_scaling[child.index]
-                             * self.final_diameter / 2.)
+                      * self.final_diameter / 2.)
 
     @Attribute  # The Lofted surface for the first part of the nose, afterwards
     # comes the cockpit
     def surface_nose(self):
         """ Generates the shell based on the circles that govern the shape
         of the nose.
+
         :rtype: parapy.geom.occ.lofting.LoftedSurface
         """
         return LoftedSurface(profiles=self.circles_nose)
@@ -54,6 +57,7 @@ class NoseCone(FusedShell):
     @Attribute
     def steps_cockpit(self):
         """ Gives the spacing between the circles for the cockpit.
+
         :rtype: float
         """
         return self.cockpit_length / (len(self.scaling_cockpit) - 1)
@@ -62,6 +66,7 @@ class NoseCone(FusedShell):
     def scaling_cockpit(self):
         """ The same for the nose part. This generates an array that will
         help shape the cockpit.
+
         :rtype: array
         """
 
@@ -80,13 +85,12 @@ class NoseCone(FusedShell):
         return Circle(quantify=len(self.scaling_cockpit),
                       position=rotate90(
                           translate(self.circles_nose[-1].position,
-                                    'z',child.index * self.steps_cockpit,
-                                    'x',-self.final_diameter / 2. *
-                                        (self.scaling_cockpit[child.index] -
-                                        self.list_scaling[-1])),
-                                    'z'),
-                      radius=self.scaling_cockpit[child.index] *
-                                         self.final_diameter / 2.)
+                                    'z', child.index * self.steps_cockpit,
+                                    'x', -self.final_diameter / 2. *
+                                    (self.scaling_cockpit[child.index] -
+                                     self.list_scaling[-1])), 'z'),
+                      radius=self.scaling_cockpit[child.index]
+                      * self.final_diameter / 2.)
 
     @Attribute
     def surface_cockpit(self):

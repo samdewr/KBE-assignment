@@ -180,6 +180,7 @@ class FuelTank(SewnShell):
     def upper_surface(self):
         """ Returns the upper surface of the fuel tank by cutting the upper
         wing surface with:
+
             - the front tank spar, extended in positive and negative 'z'
               direction, to ensure a proper intersection
               (:any:`extended_front_tank_spar`).
@@ -188,6 +189,7 @@ class FuelTank(SewnShell):
               (:any:`extended_rear_tank_spar`).
             - the rib plane of the starting rib
             - the rib plane of the ending rib
+
         Because the wing is a multi-segment (Sewn) surface,
         this splitting results in multiple wing segments which should be joined
         together to retrieve the proper upper tank surface. This is done by
@@ -215,6 +217,7 @@ class FuelTank(SewnShell):
     def lower_surface(self):
         """ Returns the lower surface of the fuel tank by cutting the lower
         wing surface with:
+
             - the front tank spar, extended in positive and negative 'z'
               direction, to ensure a proper intersection
               (:any:`extended_front_tank_spar`).
@@ -223,6 +226,7 @@ class FuelTank(SewnShell):
               (:any:`extended_rear_tank_spar`).
             - the rib plane of the starting rib.
             - the rib plane of the ending rib.
+
         Because the wing is a multi-segment (Sewn) surface,
         this splitting results in multiple wing segments which should be joined
         together to retrieve the proper upper tank surface. This is done by
@@ -315,6 +319,10 @@ class FuelTank(SewnShell):
     @Attribute
     def is_full(self):
         return self.fuel.volume >= self.volume
+
+    @Attribute
+    def is_used(self):
+        return self.fuel.initial_volume > 0.
 
     @Part
     def fuel(self):

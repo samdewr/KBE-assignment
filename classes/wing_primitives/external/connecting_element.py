@@ -4,6 +4,8 @@ import numpy as np
 from parapy.core import *
 from parapy.geom import *
 
+from classes.wing_primitives.external.airfoil import Airfoil
+
 
 class ConnectingElement(LoftedSurface, SweptSurface):
     """ Returns a connecting surface element between two airfoils. For
@@ -13,8 +15,8 @@ class ConnectingElement(LoftedSurface, SweptSurface):
     draws this interpolation along a circular arc.
     """
 
-    airfoil1 = Input()
-    airfoil2 = Input()
+    airfoil1 = Input(validator=lambda x: isinstance(x, Airfoil))
+    airfoil2 = Input(validator=lambda x: isinstance(x, Airfoil))
 
     __initargs__ = ['airfoil1', 'airfoil2']
 
@@ -48,7 +50,7 @@ class ConnectingElement(LoftedSurface, SweptSurface):
         """ The line on the intersections of the two planes containing
         :any:`airfoil1` and :any:`airfoil2`.
 
-        :rtype: parapy.geom.occ.curve.Line_
+        :rtype: parapy.geom.occ.curve.Line
         """
         return self.airfoil1.plane.intersection_curves(self.airfoil2.plane)[0]
 
@@ -119,7 +121,7 @@ class ConnectingElement(LoftedSurface, SweptSurface):
         sequence. The position is obtained by mapping the point along the
         :any:`path` curve.
 
-        :rtype: list[parapy.geom.occ.curve.BSplineCurve_]
+        :rtype: list[parapy.geom.occ.curve.BSplineCurve]
         """
         mixing_factors = np.linspace(0, 1, self.n_profiles)
         angles = [self.cant_angle * factor for factor in mixing_factors]

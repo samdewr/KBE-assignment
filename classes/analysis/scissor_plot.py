@@ -1,9 +1,8 @@
-from parapy.core import *
-from parapy.geom import *
-import matplotlib.pyplot as plt
+from math import sqrt, pi, radians
 
+import matplotlib.pyplot as plt
 import numpy as np
-from math import sqrt, tan, radians, pi, cos, radians
+from parapy.core import *
 
 
 # Typical cg range 25 to 35 percent of mac
@@ -11,47 +10,56 @@ from math import sqrt, tan, radians, pi, cos, radians
 
 class ScissorPlot(Base):
     """ This class calculates the scissor plot from the various inputs from
-    the other classes. The purpose of this class is to size the tail from
-    the a certain c.g. range and a position from the tail and the main wing.
-    From that area other aspects can be calculated.
+    the other classes. The purpose of this class is to size the tail for
+    a certain c.g. range and a position of the tail and the main wing.
     """
 
     # Airfoil Specifics
-    CL_0 = Input()  # lift at zero angle of attack.
-    Cm_0 = Input()  # zero pitching moment
+    CL_0 = Input(validator=val.is_number)  # lift at zero angle of attack.
+    Cm_0 = Input(validator=val.is_number)  # zero pitching moment
 
     # Wing Specifics
-    span = Input(validator=val.is_positive)  # span of the wing.
-    aspect_ratio = Input(validator=val.is_positive)  # The aspect ratio of th wing.
-    wing_area = Input(validator=val.is_positive)  # Wing area
-    net_wing_area = Input(validator=val.is_positive)  # Wing area- the area within the fuselage
+    # span of the wing.
+    span = Input(validator=val.is_positive)
+    # The aspect ratio of th wing.
+    aspect_ratio = Input(validator=val.is_positive)
+    # Wing area
+    wing_area = Input(validator=val.is_positive)
+    # Wing area- the area within the fuselage
+    net_wing_area = Input(validator=val.is_positive)
 
-    l_h = Input()  # horizontal distance between te tail and the c.g.
-    z_h = Input()  # Vertical distance between c.g. and the tail
-    x_ac = Input()  # mac position wing & fus combination in main wing mac.
-    CL_alpha_a_h = Input(validator=val.is_positive)  # CL alpha of the wing fus combination.
-    sweep_angle_025c = Input()  # sweep angle at quarter chord
-    CL_alpha_wing = Input(validator=val.is_positive)  # Lift curve coefficient.
-    CL_alpha_horizontal = Input(validator=val.is_positive)  # Lift curve of
-    # the tail
-    mac = Input(validator=val.is_positive)  # Mean aerodynamic chord
-    stability_margin = Input()
+    # horizontal distance between te tail and the c.g.
+    l_h = Input(validator=val.is_number)
+    # Vertical distance between c.g. and the tail
+    z_h = Input(validator=val.is_number)
+    # mac position wing & fus combination in main wing mac.
+    x_ac = Input(validator=val.is_number)
+    # CL alpha of the wing fus combination.
+    CL_alpha_a_h = Input(validator=val.is_positive)
+    # sweep angle at quarter chord
+    sweep_angle_025c = Input(validator=val.is_number)
+    # Lift curve coefficient.
+    CL_alpha_wing = Input(validator=val.is_positive)
+    # Lift curve of the tail
+    CL_alpha_horizontal = Input(validator=val.is_positive)
+    # Mean aerodynamic chord
+    mac = Input(validator=val.is_positive)
+    stability_margin = Input(validator=val.is_number)
 
     # Other Inputs
-    fuselage_length = Input(validator=val.is_positive)  # Length of the fuselage
-    fuselage_diameter = Input(validator=val.is_positive)  # needed for stabiliser
+    # Length of the fuselage needed for stabiliser
+    fuselage_length = Input(validator=val.is_positive)
+    fuselage_diameter = Input(validator=val.is_positive)
 
-    # wing
-    tail_type = Input(validator=val.is_string)  # Input depending
-    # of what tail configuration is used.
-
-    forward_cg = Input(validator=val.Between(0, 1))  # Forward position of
-    # the c.g. as fraction of mac.
-    aft_cg = Input(validator=val.Between(0, 1))  # Aft position of the c.g.
-                                                 # as fraction of mac.
+    # Input depending of what tail configuration is used.
+    tail_type = Input(validator=val.is_string)
+    # Forward position of the c.g. as fraction of mac.
+    forward_cg = Input()  # validator=val.Between(0, 1))
+    # Aft position of the c.g. as fraction of mac.
+    aft_cg = Input()  # validator=val.Between(0, 1))
 
     @Attribute
-    def Vh_V_ratio(self):
+    def vh_v_ratio(self):
         """ Calculates the ratio between the velocities of the main wing and
         the horizontal tailplane. The choice is between Conventional,
         Mid and T Tail configuration
@@ -77,8 +85,8 @@ class ScissorPlot(Base):
 
         k_e_lambda = (0.1124 + 0.1265 *
                       radians(self.sweep_angle_025c) +
-                      0.1766 * (radians(self.sweep_angle_025c)) ** 2) / r ** 2\
-                      + 0.1024 / r + 2
+                      0.1766 * (radians(self.sweep_angle_025c)) ** 2) / \
+            r ** 2 + 0.1024 / r + 2
 
         k_e_0 = 0.1124 / r ** 2 + 0.1024 / r + 2
 
@@ -86,36 +94,38 @@ class ScissorPlot(Base):
             sqrt(r ** 2 + 0.6319 + m_tv ** 2))
 
         second = (1 +
-                  (r ** 2 / (r ** 2 + 0.7915 + 5.0734 * m_tv ** 2)) ** 0.3113)\
+                  (r ** 2 / (r ** 2 + 0.7915 + 5.0734 * m_tv ** 2)) **
+                  0.3113) \
             * (1 - sqrt(m_tv ** 2 / (1 + m_tv ** 2)))
 
         return k_e_lambda / k_e_0 * (first + second) * self.CL_alpha_wing / \
-               (pi * self.aspect_ratio)
+            (pi * self.aspect_ratio)
 
     @Attribute
-    def Cm_ac(self):
+    def cm_ac(self):
         """ The moment coefficient around the aerodynamic centre is
         calculated. This is used for the controllability curve of the aircraft.
-                :rtype: float
-                """
-        Cm_ac_engines = -0.05
 
-        Cm_ac_fuselage = -1.8 \
-                         * (1 - 2.5 * self.fuselage_diameter
-                            / self.fuselage_length) \
-                         * pi * self.fuselage_diameter \
-                         * self.fuselage_diameter * self.fuselage_length \
-                         / (4 * self.wing_area* self.mac) \
-                         * self.CL_0 / self.CL_alpha_a_h
+        :rtype: float
+        """
+        cm_ac_engines = -0.05
 
-        return Cm_ac_engines + self.Cm_0 + Cm_ac_fuselage
+        cm_ac_fuselage = -1.8 * (1 - 2.5 * self.fuselage_diameter
+                                 / self.fuselage_length) \
+            * pi * self.fuselage_diameter \
+            * self.fuselage_diameter * self.fuselage_length \
+            / (4 * self.wing_area * self.mac) \
+            * self.CL_0 / self.CL_alpha_a_h
+
+        return cm_ac_engines + self.Cm_0 + cm_ac_fuselage
 
     @Attribute
     def cg_range(self):
         """ The c.g. range that is used for the scissor plot. It is between
         0 and 1. This means that is a fraction of the mac.
-                :rtype: numpy.ndarray
-                """
+
+        :rtype: numpy.ndarray
+        """
         return np.linspace(0, 1, 100)
 
     @Attribute
@@ -135,18 +145,18 @@ class ScissorPlot(Base):
 
         :rtype: list
         """
-        list = []
+        list1 = []
         for i in self.cg_range:
             first = i / \
                     (self.c_l_h / self.CL_alpha_a_h
-                        * self.l_h / self.mac * self.Vh_V_ratio ** 2)
+                     * self.l_h / self.mac * self.vh_v_ratio ** 2)
 
-            second = (self.Cm_ac / self.CL_alpha_a_h - self.x_ac) \
-                     / (self.c_l_h / self.CL_alpha_a_h
-                        * self.l_h / self.mac * self.Vh_V_ratio ** 2)
+            second = (self.cm_ac / self.CL_alpha_a_h - self.x_ac) \
+                / (self.c_l_h / self.CL_alpha_a_h
+                    * self.l_h / self.mac * self.vh_v_ratio ** 2)
 
-            list.append(first + second)
-        return list
+            list1.append(first + second)
+        return list1
 
     @Attribute
     def stability_values(self):
@@ -156,64 +166,63 @@ class ScissorPlot(Base):
 
         :rtype: list
         """
-        list = []
+        list1 = []
         for j in self.cg_range:
-
             first = j / (self.CL_alpha_horizontal / self.CL_alpha_a_h *
                          (1 - self.downwash_gradient) * self.l_h /
-                         self.mac * self.Vh_V_ratio ** 2)
-            second = (self.x_ac - self.stability_margin) /\
+                         self.mac * self.vh_v_ratio ** 2)
+            second = (self.x_ac - self.stability_margin) / \
                      (self.CL_alpha_horizontal / self.CL_alpha_a_h *
                       (1 - self.downwash_gradient) * self.l_h /
-                      self.mac * self.Vh_V_ratio ** 2)
-            list.append(first - second)
-        return list
+                      self.mac * self.vh_v_ratio ** 2)
+            list1.append(first - second)
+        return list1
 
     @Attribute
     def tail_area(self):
         """ Calculates the tail area based on the stability and
-        controllability contraint. It checks if it satisfies the constraints
+        controllability constraint. It checks if it satisfies the constraints
         exactly which one is sizing.
 
-                                :rtype: float
-                """
-        stability_forward_cg = self.forward_cg /\
-                               (self.CL_alpha_horizontal / self.CL_alpha_a_h
-                                * (1 - self.downwash_gradient) * self.l_h
-                                / self.mac * self.Vh_V_ratio ** 2) \
-                                - (self.x_ac - self.stability_margin)\
-                               / (self.CL_alpha_horizontal / self.CL_alpha_a_h
-                                  * (1 - self.downwash_gradient)
-                                  * self.l_h / self.mac * self.Vh_V_ratio ** 2)
+        :rtype: float
+        """
+        stability_forward_cg = self.forward_cg / \
+            (self.CL_alpha_horizontal / self.CL_alpha_a_h
+                * (1 - self.downwash_gradient) * self.l_h
+                / self.mac * self.vh_v_ratio ** 2) \
+            - (self.x_ac - self.stability_margin) \
+            / (self.CL_alpha_horizontal / self.CL_alpha_a_h
+                * (1 - self.downwash_gradient)
+                * self.l_h / self.mac * self.vh_v_ratio ** 2)
 
-        stability_aft_cg =  self.aft_cg /\
-                               (self.CL_alpha_horizontal / self.CL_alpha_a_h
-                                * (1 - self.downwash_gradient) * self.l_h
-                                / self.mac * self.Vh_V_ratio ** 2) \
-                                - (self.x_ac - self.stability_margin)\
-                               / (self.CL_alpha_horizontal / self.CL_alpha_a_h
-                                  * (1 - self.downwash_gradient)
-                                  * self.l_h / self.mac * self.Vh_V_ratio ** 2)
+        stability_aft_cg = self.aft_cg / \
+            (self.CL_alpha_horizontal / self.CL_alpha_a_h
+                * (1 - self.downwash_gradient) * self.l_h
+                / self.mac * self.vh_v_ratio ** 2) \
+            - (self.x_ac - self.stability_margin) \
+            / (self.CL_alpha_horizontal / self.CL_alpha_a_h
+                * (1 - self.downwash_gradient)
+                * self.l_h / self.mac * self.vh_v_ratio ** 2)
 
         controllability_forward_cg = self.forward_cg \
-                                     / (self.c_l_h / self.CL_alpha_a_h
-                                      * self.l_h / self.mac
-                                      * self.Vh_V_ratio ** 2) \
-                                     +(self.Cm_ac / self.CL_alpha_a_h -
-                                       self.x_ac) \
-                                        / (self.c_l_h /self.CL_alpha_a_h
-                                           * self.l_h / self.mac
-                                           * self.Vh_V_ratio ** 2)
+            / (self.c_l_h / self.CL_alpha_a_h
+                * self.l_h / self.mac
+                * self.vh_v_ratio ** 2) \
+            + (self.cm_ac / self.CL_alpha_a_h -
+                self.x_ac) \
+            / (self.c_l_h / self.CL_alpha_a_h
+                * self.l_h / self.mac
+                * self.vh_v_ratio ** 2)
 
         controllability_aft_cg = self.aft_cg \
-                                     / (self.c_l_h / self.CL_alpha_a_h
-                                      * self.l_h / self.mac
-                                      * self.Vh_V_ratio ** 2) \
-                                     +(self.Cm_ac / self.CL_alpha_a_h -
-                                       self.x_ac) \
-                                        / (self.c_l_h /self.CL_alpha_a_h
-                                           * self.l_h / self.mac
-                                           * self.Vh_V_ratio ** 2)
+            / (self.c_l_h / self.CL_alpha_a_h
+                * self.l_h / self.mac
+                * self.vh_v_ratio ** 2) \
+            + (self.cm_ac / self.CL_alpha_a_h -
+                self.x_ac) \
+            / (self.c_l_h / self.CL_alpha_a_h
+                * self.l_h / self.mac
+                * self.vh_v_ratio ** 2)
 
         if controllability_forward_cg > stability_forward_cg or \
                 stability_aft_cg > controllability_forward_cg:

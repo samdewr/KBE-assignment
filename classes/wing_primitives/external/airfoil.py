@@ -1,5 +1,6 @@
 import math
 from os.path import join, dirname
+from os import getcwd
 
 import kbeutils.avl as avl
 import numpy as np
@@ -33,31 +34,29 @@ class Airfoil(FittedCurve):
     Usage:
     Generating a NACA airfoil with chord 4:
     ::
-        >>> my_naca2412_airfoil = Airfoil('NACA2412', 4)
-
+    >>> my_naca2412_airfoil = Airfoil('NACA2412', 4)
 
     Generating a whitcomb airfoil with chord 4 from a .dat file:
     ::
-        >>> my_dat_airfoil = Airfoil('whitcomb', 4)
+    >>> my_dat_airfoil = Airfoil('whitcomb', 4)
 
     Generating a cst airfoil with chord 4 and 3 as well as 3 lower cst
     coefficients:
     ::
-        >>> my_cst_airfoil = Airfoil(
-        >>> chord=4, cst_coefficients_u = [0.3, 0.2, 0.1],
-        >>> cst_coefficients_l= [-0.3, -0.2, 0], type='cst')
+    >>> my_cst_airfoil = Airfoil(
+    >>> chord=4, cst_coefficients_u = [0.3, 0.2, 0.1],
+    >>> cst_coefficients_l= [-0.3, -0.2, 0], type='cst')
     """
     # Class constants
-    CONSTANTS = pd.read_excel(
-        join(dirname(dirname(dirname(dirname(__file__)))),
-             'input', 'constants.xlsx'),
-        sheet_name='aero', index_col=0
-    )
-    # TODO: check whether to have MACH defined in only one place.
-    REYNOLDS = CONSTANTS.loc['reynolds']['value']
-    REYNOLDS_UNITS = CONSTANTS.loc['reynolds']['units']
-    MACH = CONSTANTS.loc['mach']['value']
-    MACH_UNITS = CONSTANTS.loc['mach']['units']
+    try:
+        ROOT_DIR = dirname(dirname(dirname(dirname(__file__))))
+    except NameError:
+        ROOT_DIR = getcwd()
+
+    CONSTANTS = pd.read_excel(join(ROOT_DIR, 'input', 'aircraft_config.xlsx'),
+                              sheet_name='aircraft', index_col=0)
+    reynolds = CONSTANTS.loc['reynolds']['Value']
+    mach = CONSTANTS.loc['mach']['Value']
 
     __initargs__ = ['airfoil_name', 'chord', 'twist', 'type',
                     'cst_coefficients_u', 'cst_coefficients_l',
@@ -120,9 +119,8 @@ class Airfoil(FittedCurve):
         elif self.type == 'name':
             # Else, try to open a dat file containing the supplied name.
 
-            with open(join(dirname(dirname(dirname(dirname(__file__)))),
-                           'airfoils', '{}.dat'.format(self.airfoil_name)),
-                      'r') as f:
+            with open(join(self.ROOT_DIR, 'input', 'airfoils',
+                           '{}.dat'.format(self.airfoil_name)), 'r') as f:
                 for line in f.readlines():
                     x, z = line.strip('\n').split(' ')
                     airfoil_points.append(
@@ -209,12 +207,14 @@ class Airfoil(FittedCurve):
         edge (LE) by the leading_edge_point. Finding the upper half is based
         on finding the half with its cog lying most upwards (+Z).
 
-        :rtype: parapy.geom.occ.edge.Edge_
+        :rtype: parapy.geom.occ.edge.Edge
         """
+        up = self.plane.normal.cross(self.plane.binormal)
         # Find the upper half of the airfoil by taking the airfoil with
-        # the cog with the highest z-coordinate.
+        # the cog with the highest z-coordinate (in the local coordinate
+        # frame).
         airfoil_upper_half = max(self.split_airfoil.edges,
-                                 key=lambda x: x.cog.z)
+                                 key=lambda x: (x.cog - Point()).dot(up))
         # If the direction vector points in the positive x-dir:
         if airfoil_upper_half.direction_vector.x > 0:
             # Return the curve as is, because it respects sign convention.
@@ -229,12 +229,14 @@ class Airfoil(FittedCurve):
         edge (LE) by the leading_edge_point. Finding the lower half is based
         on finding the half with its cog lying most downwards (-Z).
 
-        :rtype: parapy.geom.occ.edge.Edge_
+        :rtype: parapy.geom.occ.edge.Edge
         """
+        up = self.plane.normal.cross(self.plane.binormal)
         # Find the lower half of the airfoil by taking the airfoil with
-        # the cog with the lowest z-coordinate.
+        # the cog with the lowest z-coordinate (in the local coordinate
+        # frame).
         airfoil_lower_half = min(self.split_airfoil.edges,
-                                 key=lambda x: x.cog.z)
+                                 key=lambda x: (x.cog - Point()).dot(up))
         # If the direction vector points in the positive x-dir:
         if airfoil_lower_half.direction_vector.x > 0:
             # Return the curve as is, because it respects sign convention.
@@ -330,7 +332,7 @@ class Airfoil(FittedCurve):
                                 for point in airfoil_in_plane]
 
         results = xfoil.run_xfoil(
-            airfoil_in_plane, self.REYNOLDS, alpha, self.MACH,
+            airfoil_in_plane, self.reynolds, alpha, self.mach,
             norm=True, pane=True, cleanup=True
         )
         return [{key: value for key, value in zip(keys, result)}

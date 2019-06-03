@@ -4,14 +4,13 @@ from parapy.geom import *
 
 class Cabin(LoftedSurface):
 
-    length = Input()
-    diameter_fuselage = Input()
+    length = Input(validator=val.is_positive)
+    diameter_fuselage = Input(validator=val.is_positive)
     n_circles = Input(validator=val.is_number)
 
     @Attribute
     def length_sections(self):
         return self.length / (self.n_circles - 1)
-
 
     @Part(in_tree=False)
     def profiles(self):
@@ -19,13 +18,15 @@ class Cabin(LoftedSurface):
         These are also input for the LoftedSurface and thus the shell is
         generated.
 
-                        :rtype: parapy.geom.occ.lofting.
-                        """
+        :rtype: parapy.geom.occ.curve.Circle
+        """
         return Circle(quantify=self.n_circles,
                       radius=self.diameter_fuselage / 2.,
                       position=rotate90(translate(self.position,
-                                        'x',child.index * self.length_sections)
-                                        , 'y'))
+                                                  'x',
+                                                  child.index *
+                                                  self.length_sections),
+                                        'y'))
 
     @Attribute
     def center_line(self):
@@ -43,6 +44,7 @@ class Cabin(LoftedSurface):
         :rtype: parapy.geom.occ.projection.ProjectedCurve
         """
         return ProjectedCurve(self.center_line, self, self.position.Vz)
+
 
 if __name__ == '__main__':
     from parapy.gui import display

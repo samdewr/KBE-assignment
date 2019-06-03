@@ -92,47 +92,6 @@ class Movable(RotatedShape, SewnShell):
 
         return [bisector_root, bisector_tip]
 
-    # @Attribute(in_tree=True)
-    # def nose(self):
-    #     upper_edge = min(self.upper_surface.edges, key=lambda e: e.cog.x)
-    #     lower_edge = min(self.lower_surface.edges, key=lambda e: e.cog.x)
-    #
-    #     upper_line_root = min(self.upper_surface.edges, key=lambda e: e.cog.y)
-    #     lower_line_root = min(self.lower_surface.edges, key=lambda e: e.cog.y)
-    #     upper_line_tip = max(self.upper_surface.edges, key=lambda e: e.cog.y)
-    #     lower_line_tip = max(self.lower_surface.edges, key=lambda e: e.cog.y)
-    #
-    #     upper_start = min([upper_edge.start, upper_edge.end],
-    #                       key=lambda p: p.y)
-    #     upper_end = max([upper_edge.start, upper_edge.end], key=lambda p: p.y)
-    #     lower_start = min([lower_edge.start, lower_edge.end],
-    #                       key=lambda p: p.y)
-    #     lower_end = max([lower_edge.start, lower_edge.end], key=lambda p: p.y)
-    #
-    #     delta = -1e-3
-    #
-    #     midpnt1 = upper_start.midpoint(lower_start)
-    #     print upper_line_root.direction_vector.dot(Arc3P(
-    #             upper_start, midpnt1, lower_start).tangent1)
-    #     while not upper_line_root.direction_vector.is_parallel(Arc3P(
-    #             upper_start, midpnt1, lower_start).tangent1, tol=1e-4):
-    #         midpnt1 = translate(midpnt1, self.bisectors[0].direction, delta)
-    #         print '------------------------'
-    #         print midpnt1
-    #         print upper_line_root.direction_vector.angle(
-    #             Arc3P(midpnt1, upper_start, lower_start).tangent1
-    #         )
-    #
-    #     midpnt2 = upper_end.midpoint(lower_end)
-    #
-    #     while not upper_line_tip.direction_vector.is_parallel(Arc3P(
-    #             upper_end, midpnt2, lower_end).tangent1, tol=1e-4):
-    #         midpnt2 = translate(midpnt2, self.bisectors[1].direction, delta)
-    #
-    #     arc1 = Arc3P(upper_start, midpnt1, lower_start)
-    #     arc2 = Arc3P(upper_end, midpnt2, lower_end)
-    #     return RuledSurface(arc1, arc2)
-
     @Attribute
     def wing_segment(self):
         spanwise_stations = [0] + self.wing.spanwise_positions + [1]

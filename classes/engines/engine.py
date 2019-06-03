@@ -1,7 +1,6 @@
+import numpy as np
 from parapy.core import *
 from parapy.geom import *
-import numpy as np
-from math import sqrt, radians
 
 
 class Engine(FusedShell):
@@ -9,19 +8,27 @@ class Engine(FusedShell):
     the engines' centres of gravity.
     """
 
-    __initargs__ = ['diameter_inlet', 'diameter_outlet', 'diameter_part2',
-                    'length_cone1', 'length_cone2']
+    __initargs__ = ['thrust', 'specific_fuel_consumption', 'diameter_inlet',
+                    'diameter_outlet', 'diameter_part2', 'length_cone1',
+                    'length_cone2']
 
-    diameter_inlet = Input(2.)
-    diameter_outlet = Input(1.)
-    diameter_part2 = Input(.5)
-    length_cone1 = Input(2.)
-    length_cone2 = Input(1.)
-    thrust = Input()
+    diameter_inlet = Input(validator=val.is_positive)
+    diameter_outlet = Input(validator=val.is_positive)
+    diameter_part2 = Input(validator=val.is_positive)
+    length_cone1 = Input(validator=val.is_positive)
+    length_cone2 = Input(validator=val.is_positive)
+    thrust = Input(validator=val.is_positive)
+    specific_fuel_consumption = Input(validator=val.is_positive)
 
     # Optional arguments
     color = Input('cyan')
     transparency = Input(0.5)
+
+    @Attribute
+    def cog(self):
+        return translate(self.location,
+                         self.parent.parent.position.Vx,
+                         0.45 * (self.length_cone2 + self.length_cone1))
 
     @Attribute
     def first_cone_list(self):
@@ -83,10 +90,15 @@ class Engine(FusedShell):
     def length(self):
         return self.length_cone1 + self.length_cone2
 
+    @Attribute
+    def mass(self):
+        return self.parent.parent.MTOM * 0.097 / 4.
+
 
 if __name__ == '__main__':
     from parapy.gui import display
 
     obj = Engine(diameter_inlet=2.0, diameter_outlet=1.0,
-                 diameter_part2=0.5, length_cone1=2.0, length_cone2=1.0)
+                 diameter_part2=0.5, length_cone1=2.0, length_cone2=1.0,
+                 thrust=50000., specific_fuel_consumption=1.79e-5)
     display(obj)

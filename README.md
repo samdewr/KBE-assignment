@@ -1,4 +1,6 @@
 # KBE_Assignment
+![aircraft](./output/instances/conv_mid_wing_iso.bmp)
+
 This is the KBE application developed by Sam de Wringer and Roel Thijssen 
 for the course in Knowledge Based Engineering at the Delft University of 
 Technology. 
@@ -23,8 +25,21 @@ tail surface requirement.
 The KBE app can be run by:
  1. Specifying an aircraft geometry in the`input/aircraft_config.xlsx` Excel
  file. Each variable is described extensively here.
- 1. Run the `main` object 
-**TODO FINISH THIS PART**.
+ 1. Run the `main` file, thereby instantiating a `Main` object. The user now
+ has two choices:
+    1. The user can either specify the actions he or she wants to perform in 
+    the script in the `if __name__ == '__main__'`-loop
+    1. Or the user can use the interactive capabilities of the Python Console, 
+    performing the operations 'manually' by calling, for example: 
+    ```python
+    from main import Main
+    main = Main()
+    main.burn_symmetrically('main', 0, 100.)
+    ```
+ 
+> For the full potential of the KBE application, the user is redirected to 
+the code documentation in the `docs` folder. **
+  
 
 ## Program elements
 ### Airfoils
@@ -99,24 +114,20 @@ represent either a flap, rudder, aileron, etc. due to its simplicity.
 ```
 │   .gitattributes
 │   .gitignore
+│   main.py
 │   README.md
 │
-├───.idea
-│   │   assignment.iml
-│   │   encodings.xml
-│   │   misc.xml
-│   │   modules.xml
-│   │   vcs.xml
-│   │   workspace.xml
-│   │
-│   ├───dictionaries
-│   │       TUDelft_SID.xml
-│   │
-│   └───inspectionProfiles
-│           Project_Default.xml
+├───.git
+│   └─── ...
 │
-├───aircraft
+├───.idea
+│   └─── ...
+│
+├───classes
 │   │   aircraft.py
+│   │   KBE Class Diagram.pdf
+│   │   KBE Class Diagram.psd
+│   │   __init__.py
 │   │
 │   ├───analysis
 │   │       scissor_plot.py
@@ -131,8 +142,10 @@ represent either a flap, rudder, aileron, etc. due to its simplicity.
 │   │       fuselage.py
 │   │       nose.py
 │   │       tail.py
+│   │       __init__.py
 │   │
 │   └───wing_primitives
+│       │   __init__.py
 │       │
 │       ├───external
 │       │       airfoil.py
@@ -145,6 +158,7 @@ represent either a flap, rudder, aileron, etc. due to its simplicity.
 │       ├───fuel
 │       │       fuel.py
 │       │       fuel_tank.py
+│       │       __init__.py
 │       │
 │       └───structural_elements
 │               rib.py
@@ -152,19 +166,37 @@ represent either a flap, rudder, aileron, etc. due to its simplicity.
 │               spar.py
 │               __init__.py
 │
-├───airfoils
-│       whitcomb.dat
-│
 ├───docs
-│       ...
-│   
+│   └─── ...
+│
 ├───input
-│       aircraft_config.xlsx
-│       constants.xlsx
+│   │   aircraft_config.xlsx
+│   │
+│   └───airfoils
+│           6NACA_63-209.dat
+│           6NACA_63012A.dat
+│           6NACA_64(2)-215.dat
+│           6NACA_65(3)-218.dat
+│           6NACA_65(4)-221.dat
+│           6NACA_66(2)-215.dat
+│           BOEING_737_MIDSPAN_AIRFOIL.dat
+│           BOEING_737_OUTBOARD_AIRFOIL.dat
+│           BOEING_737_ROOT_AIRFOIL .dat
+│           EPPLER_551.dat
+│           HQ_2.5_12.dat
+│           LOCKHEED_L-188.dat
+│           LWK_80-100.dat
+│           NASA_SC(2)-0406.dat
+│           RAE_2822.dat
+│           S2027.dat
+│           whitcomb.dat
 │
 ├───output
-│       ... 
-│
+│   │   └─── ...
+│   └───instances
+│       └─── ...
 └───tools
         naca.py
+        read.py
+
 ```

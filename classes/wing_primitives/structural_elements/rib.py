@@ -14,7 +14,7 @@ class Rib(GeomBase):
                                                isinstance(x, int))
     rib_orientation_angle = Input(
         validator=lambda x: isinstance(x, (int, float)) or
-                            (x == 'flight_direction' or x == 'normal')
+        (x == 'flight_direction' or x == 'normal')
     )
 
     __initargs__ = ['wing', 'rib_spanwise_reference_spar_idx',
@@ -86,7 +86,7 @@ class Rib(GeomBase):
         """ Returns the spar that is used as a reference for the longitudinal
         positioning of the rib.
 
-        :rtype: spar.Spar
+        :rtype: classes.wing_primitives.structral_elements.spar.FusedSpar
         """
         return self.wing.spars[self.rib_spanwise_reference_spar_idx]
 
@@ -95,7 +95,7 @@ class Rib(GeomBase):
         """ Returns the spar that is used as a reference for the orientation
         of the rib.
 
-        :rtype: spar.Spar
+        :rtype: classes.wing_primitives.structral_elements.spar.FusedSpar
         """
         return self.wing.spars[self.rib_orientation_reference_spar_idx]
 

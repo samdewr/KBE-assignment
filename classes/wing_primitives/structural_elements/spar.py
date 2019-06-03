@@ -14,10 +14,6 @@ class SparSegment(FusedShell):
 
     # Optional inputs
     spanwise_pos_end = Input(1, validator=val.Range(0, 1, incl_min=False))
-    # Q: Why do I need to manually assign the position of the spar and of
-    #  its flanges? If I do not pass the position=... argument for the Spar
-    #  part in LiftingSurface, and if I don't do so for the web and flanges
-    #  either, its position is set at 0, 0, 0.
     position = Input()
 
     __initargs__ = ['wing_segment', 'chordwise_pos_root',
@@ -49,9 +45,6 @@ class SparSegment(FusedShell):
 
         :rtype: parapy.geom.occ.curve.LineSegment
         """
-        # Q: Why do I need to use a dimensionalised U-parameter for
-        #  crv.point_at_parameter/crv.point instead of a non-dimensional
-        #  normalised fraction?
         root_chord = self.wing_segment.root_airfoil.chord_line
         tip_chord = self.wing_segment.tip_airfoil.chord_line
         return LineSegment(root_chord.point(self.chordwise_pos_root *
@@ -59,8 +52,8 @@ class SparSegment(FusedShell):
                            tip_chord.point(self.chordwise_pos_tip *
                                            tip_chord.length))
 
-    @Attribute
-    def projected_spar_lines(self):
+    @Attribute(in_tree=True)
+    def test123(self):
         """ Projects the 'spar_line' onto the upper and lower surface of the
         wing segment. If the orientations of the projected lines are not in
         the same direction, one of the lines is reversed.
@@ -73,11 +66,38 @@ class SparSegment(FusedShell):
         lower_crv = ProjectedCurve(self.spar_line,
                                    self.wing_segment.lower_surface,
                                    self.wing_segment.position.Vz_)
+        return [upper_crv, lower_crv]
 
-        if (np.sign(max(upper_crv.direction_vector,
-                        key=abs)) !=
-            np.sign(max(lower_crv.direction_vector,
-                        key=abs))):
+    @Attribute
+    def projected_spar_lines(self):
+        """ Projects the 'spar_line' onto the upper and lower surface of the
+        wing segment. If the orientations of the projected lines are not in
+        the same direction, one of the lines is reversed.
+
+        :rtype: list[parapy.geom.occ.wire.Wire]
+        """
+        splitter = RuledSurface(self.wing_segment.root_airfoil.chord_line,
+                                self.wing_segment.tip_airfoil.chord_line)
+        splitter_ext = ExtendedSurface(splitter, distance=1., side='all')
+
+        split = SplitSurface(self.wing_segment, splitter_ext)
+
+        up = self.wing_segment.parent.position.up
+
+        upper_surface = max(split.faces,
+                            key=lambda f: Vector(*f.cog).dot(up))
+        lower_surface = min(split.faces,
+                            key=lambda f: Vector(*f.cog).dot(up))
+
+        upper_crv = ProjectedCurve(self.spar_line,
+                                   upper_surface,
+                                   self.wing_segment.position.Vz)
+        lower_crv = ProjectedCurve(self.spar_line,
+                                   lower_surface,  # self.wing_segment.
+                                   self.wing_segment.position.Vz_)
+
+        if (np.sign(max(upper_crv.direction_vector, key=abs)) !=
+                np.sign(max(lower_crv.direction_vector, key=abs))):
             return [upper_crv.reversed, lower_crv]
         else:
             return [upper_crv, lower_crv]
@@ -106,7 +126,7 @@ class SparSegment(FusedShell):
         cog position lying most outboard.
 
         :rtype:
-            parapy.geom.occ.ruling.RuledSurface | parapy.geom.occ.face.Face_
+            parapy.geom.occ.ruling.RuledSurface | parapy.geom.occ.face.Face
         """
         if self.spanwise_pos_end < 1:
             return min(
@@ -307,7 +327,7 @@ class SparSegment(FusedShell):
         of the segment wing span. The most outboard part of this cut surface is
         then discarded based on its cog lying more outboard.
 
-        :rtype: list[parapy.geom.occ.face.Face_]
+        :rtype: list[parapy.geom.occ.face.Face]
         """
         airfoil_surfaces = [self.wing_segment.upper_surface,
                             self.wing_segment.lower_surface]

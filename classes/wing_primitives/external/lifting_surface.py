@@ -136,20 +136,46 @@ class LiftingSurface(LoftedSurface):
         """ Return the upper surface of the wing segment,
         by lofting the root and tip airfoils upper halves..
 
-        :rtype: parapy.geom.occ.face.Face_
+        :rtype: parapy.geom.occ.face.Face
         """
-        return LoftedSurface([self.root_airfoil.upper_half,
-                              self.tip_airfoil.upper_half])
+        splitter = RuledSurface(self.root_airfoil.chord_line,
+                                self.tip_airfoil.chord_line)
+        splitter_ext = ExtendedSurface(splitter, distance=1., side='all')
+
+        split = SplitSurface(self, splitter_ext)
+
+        upper_surface = max(split.faces,
+                            key=lambda f: Vector(*f.cog).dot(self.position.up))
+        # return LoftedSurface([self.root_airfoil.upper_half,
+        #                       self.tip_airfoil.upper_half])
+        return upper_surface
+
+    @Attribute
+    def pickle_edges(self):
+        from pickle import dump
+        with open('edges.pkl', 'w') as f:
+            dump([self.root_airfoil.upper_half,
+                  self.tip_airfoil.upper_half], f)
+        return True
 
     @Attribute
     def lower_surface(self):
         """ Return the lower surface of the wing segment,
         by lofting the root and tip airfoil upper halves.
 
-        :rtype: parapy.geom.occ.face.Face_
+        :rtype: parapy.geom.occ.face.Face
         """
-        return LoftedSurface([self.root_airfoil.lower_half,
-                              self.tip_airfoil.lower_half])
+        splitter = RuledSurface(self.root_airfoil.chord_line,
+                                self.tip_airfoil.chord_line)
+        splitter_ext = ExtendedSurface(splitter, distance=1., side='all')
+
+        split = SplitSurface(self, splitter_ext)
+
+        lower_surface = min(split.faces,
+                            key=lambda f: Vector(*f.cog).dot(self.position.up))
+        # return LoftedSurface([self.root_airfoil.lower_half,
+        #                       self.tip_airfoil.lower_half])
+        return lower_surface
 
     @Attribute(settable=False)
     def taper_ratio(self):
@@ -255,8 +281,6 @@ class LiftingSurface(LoftedSurface):
                                self.spar_chordwise_positions_root[child.index])
         )
 
-
-
     @Attribute
     def closed_solid(self):
         """ Return a solid version of this wing segment (thus without
@@ -271,7 +295,7 @@ class LiftingSurface(LoftedSurface):
         """ Return a outer shell version of this wing segment (thus without
         structural elements) with closed root and tip airfoils
 
-        :rtype: parapy.geom.occ.shell.Shell_
+        :rtype: parapy.geom.occ.shell.Shell
         """
         return self.closed_solid.shells[0]
 
